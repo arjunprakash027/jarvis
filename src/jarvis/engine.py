@@ -159,7 +159,7 @@ class _Run:
 
     def gate_question(self, node: dict) -> str:
         """The gate text, plus what the nodes it needs found (for example the real basket total)."""
-        found = [self.outputs[n].strip()[:300] for n in node.get("needs", []) if self.outputs.get(n, "").strip()]
+        found = [self.outputs[n].strip()[:1500] for n in node.get("needs", []) if self.outputs.get(n, "").strip()]
         return " ".join([node["do"], *found]) if found else node["do"]
 
     def gate_choices(self, node: dict) -> list[str]:
