@@ -1,7 +1,7 @@
 name = "movies"
 description = "Choose a film, time and two seats at Cineworld Dublin; stop before payment and add a tentative Google Calendar event."
 agent = "pi"
-model = "antigravity/gemini-4-argon"
+model = "antigravity/gemini-3-8-flash:high"
 directory = "modules/movies"
 task_size = "short"
 required_gates = ["choose_showing", "before_payment"]
