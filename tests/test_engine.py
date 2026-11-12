@@ -356,3 +356,21 @@ def test_closed_popup_sends_nothing():
     open_gate("gate-2", "t", "q", popup=lambda *a: None, say=lambda *a: None,
               resolve=lambda *a: sent.append(a))
     assert sent == []
+
+
+def test_gate_question_and_next_node_see_earlier_results():
+    run = engine._Run(None, {"dag": {"task": "t"}}, None, None, None)
+    run.outputs = {"verify": "Basket total EUR 9.35", "choose": "Arjun answered yes: the 19:30 showing"}
+    gate = {"id": "pay", "type": "gate", "do": "Tesco basket: do I pay?", "needs": ["verify"]}
+    assert run.gate_question(gate) == "Tesco basket: do I pay? Basket total EUR 9.35"
+    step = {"id": "seats", "type": "step", "do": "Pick 2 seats", "needs": ["choose"]}
+    assert "the 19:30 showing" in run.with_inputs(step, step["do"])
+    assert run.with_inputs({"id": "a", "do": "x", "needs": []}, "x") == "x"
+
+
+def test_gate_question_shows_needed_output(stack):
+    task = "gate-context"
+    stack.submit("m-ctx", task)
+    stack.next_gate(task)
+    question = [e for e in stack.events("gate") if e["task"] == task][-1]["question"]
+    assert question.endswith("fine")

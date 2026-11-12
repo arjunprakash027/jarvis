@@ -51,6 +51,7 @@ class _Run:
         self.executor, self.open_gate, self.compact = executor, open_gate, compact
         self.seq = 0
         self.trace: list[str] = []
+        self.outputs: dict[str, str] = {}  # node id -> its last output (a gate's output is Arjun's answer)
 
     def note(self, node_id: str, event: str) -> None:
         self.trace.append(f"{node_id}: {event}")
@@ -70,7 +71,7 @@ class _Run:
             "task": self.req["dag"]["task"],
             "node": node,
             "action": action,
-            "instruction": node["undo"] if action == "undo" else node["do"],
+            "instruction": node["undo"] if action == "undo" else self.with_inputs(node, node["do"]),
             "attempt": attempt,
         }
 
@@ -121,6 +122,16 @@ class _Run:
                 self.note(node_id, "undone" if ok else "undo failed")
             done.discard(node_id)
 
+    def with_inputs(self, node: dict, text: str) -> str:
+        """Add what the nodes in `needs` produced, so a node sees earlier results and gate answers."""
+        found = [f"- {n}: {self.outputs[n].strip()[:500]}" for n in node.get("needs", []) if self.outputs.get(n, "").strip()]
+        return text + "\n\nResults of earlier nodes:\n" + "\n".join(found) if found else text
+
+    def gate_question(self, node: dict) -> str:
+        """The gate text, plus what the nodes it needs found (for example the real basket total)."""
+        found = [self.outputs[n].strip()[:300] for n in node.get("needs", []) if self.outputs.get(n, "").strip()]
+        return " ".join([node["do"], *found]) if found else node["do"]
+
     async def work(self, node: dict) -> str:
         """Run a step. One retry, then ask. Return ok, skip or stop."""
         while True:
@@ -129,6 +140,7 @@ class _Run:
                 ok, out = await self.call(node, "do", attempt)
                 self.note(node["id"], "ok" if ok else f"failed (try {attempt})")
                 if ok:
+                    self.outputs[node["id"]] = out
                     return "ok"
             choice = await self.recover(node["id"], f"Task '{self.req['dag']['task']}', step '{node['id']}' failed twice: {out[:200]}.")
             if choice != "retry":
@@ -150,8 +162,9 @@ class _Run:
             kind = node["type"]
 
             if kind == "gate":
-                yes, text = parse_answer(await self.ask(node["id"], node["do"]))
+                yes, text = parse_answer(await self.ask(node["id"], self.gate_question(node)))
                 self.note(node["id"], "gate yes" if yes else "gate no")
+                self.outputs[node["id"]] = f"Arjun answered {'yes' if yes else 'no'}" + (f": {text}" if text else "")
                 if not yes:
                     if "undo" in text:
                         await self.undo(order[:i], byid, done)
@@ -173,6 +186,7 @@ class _Run:
                 ok, out = await self.call(node, "do", 1)
                 self.note(node["id"], "passed" if ok else "failed")
                 if ok:
+                    self.outputs[node["id"]] = out
                     done.add(node["id"])
                     i += 1
                     continue
