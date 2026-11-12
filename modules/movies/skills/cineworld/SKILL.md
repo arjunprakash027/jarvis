@@ -1,6 +1,6 @@
 ---
 name: cineworld
-description: Choose Cineworld Dublin showings and two seats with ego-browser, stop before personal details/payment, and add a tentative Google Calendar event through pi MCP.
+description: Choose Cineworld Dublin showings and two seats with ego-browser, stop before personal details/payment, and add a tentative Google Calendar event through pi Composio tools.
 ---
 
 # Cineworld Dublin
@@ -22,9 +22,11 @@ Load the installed ego-browser skill and run `ego-browser skill` before browser 
 
 Exploration example only: I Play Rocky, Saturday 14 November 2026, 19:30, Dublin Screen 15, runtime 2h 8m, C6+C7, two Adults, €35.98 including €2 booking fee. These values must be re-read live, never substituted for a real run.
 
-## Calendar (pi MCP only)
+## Calendar (pi Composio tools)
 
-Use the configured `google-calendar` server's discovered schemas; never guess tool names. If it requires sign-in, stop and report to the supervisor for Arjun. No credentials or personal data in files. Before the first run verify this prerequisite, not halfway through a seat hold.
+The global pi-composio extension is available even when global skills are disabled. Use `composio_search` for Google Calendar event tools and check googlecalendar's active connection. If not connected use `composio_connect` with toolkits `["googlecalendar"]`, report its link to the supervisor for Arjun, and leave Calendar pending. Never enter credentials or create an event before active connection confirmation. No MCP configuration is needed. Cinema-only verification can proceed while Calendar is pending, but is not full acceptance.
+
+Use `composio_get_schema` before each discovered tool, then `composio_execute` with its actual schema. Tools discovered during prep: GOOGLECALENDAR_EVENTS_LIST, GOOGLECALENDAR_CREATE_EVENT; discover a single-event read tool for verification too. For creation explicitly set `create_meeting_room=false`, `exclude_organizer=true`, `attendees=[]`, `send_updates="none"`, `calendar_id="primary"`, and `timezone="Europe/Dublin"`. Do not accept the create tool's default Meet link or invite/notification behavior. Use real ISO timestamps and confirm schemas in the executing session; never guess field names for other tools.
 
 After the final gate, if the choice gate explicitly authorized the calendar hold, create exactly one event on the intended/default calendar. Use the selected showing's real date/start, Europe/Dublin timezone, and observed runtime for the end; disclose that runtime excludes unverified trailers. Title: `Tentative — <film> at Cineworld Dublin (not booked)`. Description states two tickets were only selected; no purchase occurred and the seats are not guaranteed. No invitees or notifications.
 

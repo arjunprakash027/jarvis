@@ -5,4 +5,4 @@ model = "openai/gpt-6.1-sol"
 directory = "modules/movies"
 task_size = "short"
 required_gates = ["choose_showing", "before_payment"]
-mcp_servers = ["google-calendar"]
+mcp_servers = [] # Google Calendar uses the global pi-composio extension.
