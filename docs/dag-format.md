@@ -58,3 +58,10 @@ The engine runs the nodes in topological order. Nodes with the same rank keep th
 ## Result
 
 A run returns `{"status", "reason", "trace"}`. The status is `done`, `stopped`, `declined` or `invalid`.
+
+## Results flow forward
+
+- Each node's instruction gets the results of the nodes in its `needs`, under "Results of earlier nodes".
+- A gate's result is Arjun's answer, for example "Arjun answered yes: the 19:30 showing".
+- A gate question gets the results of the nodes it needs. So "Do I pay?" after a test that read the basket shows the real total.
+- A typed or spoken gate answer: the first word is the answer (yes, no, retry, skip, stop, undo). The rest is detail.
