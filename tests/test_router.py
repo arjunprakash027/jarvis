@@ -7,8 +7,7 @@ from jarvis import router
 from jarvis.router import Judgments, Route, decide
 
 MODULES = {
-    "shopping": "Buy groceries on Tesco",
-    "movies": "Book cinema tickets at Cineworld Dublin",
+    "shopping": "Buy or price anything online: groceries, products, cinema tickets",
     "builder": "Build a new tool or a new Jarvis module",
 }
 CASES = json.loads((Path(__file__).parent / "router_cases.json").read_text())

@@ -1,0 +1,25 @@
+
+# Site note: Cineworld Dublin (cineworld.ie)
+
+Page steps for the `shopping` skill. Read it first. The gate for the film choice is the general `choices` gate; the final gate is `pay`.
+
+Start each node's result output with its key fact in 10 words or fewer, for example `Two seats C6/C7, total EUR 35.98, not booked.` Jarvis speaks at most 18 words. Put film, date/time, ticket types, exact counts, fee, expiry and other evidence after that first sentence so the engine can forward the complete result to the next node/gate. Do not omit a failure or pending Calendar status for brevity.
+
+Load the installed ego-browser skill and run `ego-browser skill` before browser work. One TaskSpace per run; reuse it. Follow current snapshots, not old refs. Use observable waits after every selection: DOM updates are asynchronous and immediate second clicks can be lost.
+
+Node result JSON may carry `"choices": ["...", ...]`. The `find` result must list every film/time option it found as choices, one string each, for example `"I Play Rocky, Sat 14 Nov 19:30"`, next to the usual `ok` and `output`. The `choices` gate shows them as a list, and the answer text is the exact string Arjun picked. Match it to the showing, not to your memory of the page.
+
+## Observed path (12 November 2026)
+
+1. Open https://www.cineworld.ie. If the Didomi consent dialog appears, choose **Disagree and close**. Click **quick buy**; wait for its panel (it can appear after an immediate snapshot).
+2. **PICK** opens a month calendar. Select the requested Saturday; check the panel's full date. Open film buttons to inspect that day's actual showing links. Use full-page snapshots for content below the viewport. Collect a small list of evening film/time options and runtime (these become the `choices` of `find_showings`); do not invent availability.
+3. The `choices` gate asks Arjun to pick a film/time. Approved default: a request for two tickets with no ticket type means two standard Adult tickets; do not require extra ticket-type confirmation. Honor a different explicitly requested type. If a film has only one offered evening time, choosing that film identifies that showing; otherwise require the time. Do not navigate to a showing until its answer identifies the choice. Ambiguous/negative answers are blockers, not approval of a default.
+4. Showtime links lead to `https://web.cineworld.ie/order/showtimes/<id>/seats`. Sign-in may appear; **Continue as guest** is approved. Do not enter credentials, personal data or human verification. Stop if any is required.
+5. **Choose your seats** shows Dublin, screen, showing and runtime. The seat SVGs have `role="button"`, `aria-label="Normal seat C6"`, `aria-disabled` and `aria-pressed`. Snapshots may omit their individual roles; bounded `page.evaluate()` can inspect those DOM attributes. Click actual available normal seats using their CSS aria labels, not JS dispatch. Avoid wheelchair/companion seats unless requested.
+6. A fixed footer can intercept clicks on seats/ticket quantities near the viewport bottom. Inspect state, then wheel-scroll over the main content to move the target above the footer; do not force-click. Select each seat separately and wait for its `aria-pressed="true"` before selecting the next. Count all pressed seat SVGs, not just the two intended labels.
+7. The site rejects an isolated single-seat gap at an aisle. In exploration C5+C6 failed; C6+C7 passed. These are examples, not fixed seat preferences. On rejection, inspect the message, deselect only this run's seats and choose a compliant adjacent pair. Never assume equal consecutive labels mean physically adjacent across an aisle.
+8. **Select tickets** navigates to `/tickets` (**Choose your tickets**). Confirm the summary still lists two seats. Select two Adult tickets (or gate-approved types) with scoped quantity buttons/fresh refs. Wait for each quantity update and take a fresh snapshot between repeated ref clicks. Verify **2 of 2**, selected types/counts and live total.
+9. This ticket page is the approved review boundary: it shows film, screen, date/time, seats, counts, total and included booking fee. **Do not click Your details.** It leads beyond our approved scope. No personal details, payment pages, voucher/card entry or payment actions. At this point the engine test verifies evidence and the final `pay` gate asks whether to stop here before payment. A yes ends browser work with **stopped before payment** (and, for a dated ticket, allows the tentative Calendar hold in `skills/calendar.md`); a no also never permits payment.
+10. Finish the TaskSpace after saving non-sensitive evidence in the task folder. If stopped for user control/authentication, hand off instead. Seat holds expire (about five minutes observed); never imply a booking is complete, and re-check if the run has expired before verification.
+
+Example only: I Play Rocky, Saturday 14 November 2026, 19:30, Dublin Screen 15, runtime 2h 8m, C6+C7, two Adults, €35.98 including €2 booking fee. These values must be re-read live, never substituted for a real run.

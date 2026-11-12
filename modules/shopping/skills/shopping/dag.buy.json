@@ -1,0 +1,37 @@
+{
+  "task": "Buy me an office chair on Amazon",
+  "nodes": [
+    {
+      "id": "find",
+      "type": "step",
+      "do": "Read the shopping skill and skills/sites/amazon.md. Inspect the cart first and note what is already in it. Search amazon.ie for an office chair. Read three real options with prices. Return each as one string in the result's \"choices\" list, for example \"Mesh office chair, EUR 65.99\". Add nothing.",
+      "needs": []
+    },
+    {
+      "id": "choose",
+      "type": "gate",
+      "do": "Amazon: pick one of the office chairs found. Other lets you type.",
+      "needs": ["find"]
+    },
+    {
+      "id": "add",
+      "type": "step",
+      "do": "Add the chair from the choose answer to the cart once. Wait for the cart to update. Inspect before retrying.",
+      "needs": ["choose"],
+      "undo": "Remove only this chair from the cart. Leave every item that was there before."
+    },
+    {
+      "id": "check",
+      "type": "test",
+      "do": "Open the cart. Confirm exactly the chosen chair, quantity 1, plus items that were there before. Read the subtotal. Return the item, quantity and total in the result output; the engine appends it to the pay gate question. Do not click Proceed to checkout.",
+      "needs": ["add"],
+      "on_fail": "find"
+    },
+    {
+      "id": "pay",
+      "type": "gate",
+      "do": "Amazon cart: <chair>, <total>. Stop here before payment? Never open checkout or payment.",
+      "needs": ["check"]
+    }
+  ]
+}

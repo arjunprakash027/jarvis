@@ -13,15 +13,15 @@
   },
   {
     "request": "book two tickets for Dune at Cineworld Dublin tomorrow at 8pm",
-    "expect": "movies"
+    "expect": "shopping"
   },
   {
     "request": "what's on at the cinema tonight, get me two seats for the best one",
-    "expect": "movies"
+    "expect": "shopping"
   },
   {
     "request": "get me tickets for the new Bond film on Saturday evening",
-    "expect": "movies"
+    "expect": "shopping"
   },
   {
     "request": "build a module that cleans up my downloads folder",
