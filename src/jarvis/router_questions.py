@@ -4,10 +4,11 @@ WHICH_MODULE = "Which module does the user want to use for `request`?"
 A_MODULE_FITS = "Does `request` ask for something that one of the `modules` can do?"
 ENOUGH_DETAIL = "Does `request` give enough detail to start the work?"
 ENOUGH_DETAIL_YES = (
-    "The request names what to do. A follow-up that builds on earlier work "
-    "also counts, because the module remembers its earlier requests."
+    "The request says what the user wants done. Exact names, times or quantities can be "
+    "settled later. A follow-up that builds on earlier work also counts, because the "
+    "module remembers its earlier requests."
 )
-ENOUGH_DETAIL_NO = "The request does not say what to do, or it leaves out something the work needs."
+ENOUGH_DETAIL_NO = "The request is a bare action with no subject, such as only naming a verb or a vague thing."
 LONG_TASK = "Does `request` need more than about 10 steps?"
 
 # What Arjun hears or reads when the router cannot pick a module.

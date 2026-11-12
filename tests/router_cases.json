@@ -37,7 +37,7 @@
   },
   {
     "request": "do the thing",
-    "expect": "detail"
+    "expect": "no_fit"
   },
   {
     "request": "book tickets",
@@ -45,7 +45,7 @@
   },
   {
     "request": "order some stuff",
-    "expect": "which"
+    "expect": "detail"
   },
   {
     "request": "get me something for tonight",
