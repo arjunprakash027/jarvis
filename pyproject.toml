@@ -5,6 +5,7 @@ description = "Local voice-driven task automation engine on macOS"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "sounddevice>=0.5.6",
     "typesafe-sdk>=0.7.5",
 ]
 
