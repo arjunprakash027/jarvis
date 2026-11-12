@@ -1,5 +1,5 @@
 name = "clean-space"
-description = "Inspect Mac disk usage and move explicitly approved old Downloads to Trash"
+description = "Clean my Mac disk space: find old Downloads, caches and Trash size, then move approved files to the Trash"
 agent = "pi"
 model = "openai/gpt-6.1-sol"
 directory = "modules/clean-space"
