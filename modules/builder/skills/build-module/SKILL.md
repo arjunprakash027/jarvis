@@ -41,6 +41,7 @@ The engine sends you one node instruction at a time, in DAG order. For each inst
 - Do exactly that node. Write code only in the target folder. Never write code in `tasks/`.
 - Append to `tasks/<id>/log.md`: the node id, the attempt number, `ok` or `failed`, and one line on what happened (the command run, the file written, the error).
 - A `test` node runs the thing for real and answers failed if the result is wrong. Do not weaken a test to make it pass.
+- macOS normally protects some folders. When a scan cannot read a folder because of permissions, skip it and list that folder as `skipped: no permission` in what it shows Arjun. The scan test passes if every readable folder was scanned and each skipped folder is listed. Encode this in the spec, DAG test instructions, and generated skill; do not require full cache access. All other tests remain mandatory, including the real Trash/restore fixture test, Trash-only mutation and the gate before any user-file move.
 - An `undo` instruction reverses its step. Use `trash`, never `rm`.
 - Do not skip, simulate or answer a gate. The engine owns each gate.
 - Reply with `ok` or `failed` and one line of detail. End each reply with the node id.

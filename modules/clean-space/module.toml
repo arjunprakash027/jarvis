@@ -1,8 +1,0 @@
-name = "clean-space"
-description = "Inspect Mac disk usage and move approved old Downloads to Trash without emptying it"
-agent = "pi"
-model = "openai/gpt-6.1-sol"
-directory = "modules/clean-space"
-task_size = "short"
-required_gates = ["confirm-trash"]
-mcp_servers = []
