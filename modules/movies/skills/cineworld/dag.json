@@ -1,0 +1,53 @@
+{
+  "task": "book two tickets for a film on Saturday evening",
+  "nodes": [
+    {
+      "id": "find_showings",
+      "type": "step",
+      "do": "Read cineworld skill. Use ego-browser to find actual upcoming Saturday evening Cineworld Dublin film/time options, runtime and date in Europe/Dublin. Save options in task log. No seat or payment action.",
+      "needs": []
+    },
+    {
+      "id": "choose_showing",
+      "type": "gate",
+      "do": "Cineworld Dublin: choose one of the live Saturday film/time options from find_showings. Confirm two standard Adult tickets or state ticket types, and whether to add one tentative Google Calendar hold marked not booked.",
+      "needs": [
+        "find_showings"
+      ]
+    },
+    {
+      "id": "select_seats",
+      "type": "step",
+      "do": "Read choose_showing answer; stop if ambiguous, cancelled or no ticket-type confirmation. Follow approved guest path; stop for credentials/personal data/human verification. Select exactly two adjacent available normal seats for that showing, wait after each click. Select two approved tickets on /tickets and record live seats, quantities, total and expiry. Stop on this ticket-summary page; never click Your details.",
+      "needs": [
+        "choose_showing"
+      ],
+      "undo": "Deselect only this task's selected seats through the seat picker if still held. Do not touch other bookings, enter details or open payment; if expired record that no active hold remains."
+    },
+    {
+      "id": "verify_seats",
+      "type": "test",
+      "do": "Verify live ticket summary: correct Dublin film/date/time, exactly two selected seats, two gate-approved tickets, 2 of 2, live total and booking fee. Check hold not expired and no details/payment page opened. Record evidence. Fail on mismatch; do not report success from intended clicks alone.",
+      "needs": [
+        "select_seats"
+      ],
+      "on_fail": "select_seats"
+    },
+    {
+      "id": "before_payment",
+      "type": "gate",
+      "do": "Cineworld Dublin: review the verified film/time, two seats, ticket types and actual total from verify_seats. End the demo here, stopped before payment? No tickets are booked. Yes never authorizes Your details, payment or card entry; no also must not advance the browser.",
+      "needs": [
+        "verify_seats"
+      ]
+    },
+    {
+      "id": "calendar",
+      "type": "step",
+      "do": "End browser work without advancing beyond the ticket summary. If choose_showing authorized it, use pi google-calendar MCP to ensure exactly one tentative event for the selected showing, real Europe/Dublin start and runtime-based end, marked not booked. Check for existing event before create, record returned ID and read it back. Stop for missing MCP/sign-in; never invent success. Report stopped before payment, no tickets booked.",
+      "needs": [
+        "before_payment"
+      ]
+    }
+  ]
+}
