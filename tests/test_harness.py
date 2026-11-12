@@ -174,3 +174,38 @@ def test_compaction_noop_is_not_a_failed_run(tmp_path, message):
         return response
 
     Harness([module], run=run, timeout=1).compact(module.name)
+
+
+class FakeHerdr(FakeHC):
+    """hc plus the Herdr app: jarvis up runs in space sp1; the new session's tab is tb9."""
+
+    def __call__(self, args, **kwargs):
+        if args[0] == "herdr-app":
+            self.calls.append(args)
+            if args[1] == "ls":
+                tab = {"id": "tb9", "terminals": [{"terminal": "t1"}]}
+                return SimpleNamespace(stdout=json.dumps({"spaces": [{"tabs": [tab]}]}))
+            return SimpleNamespace(stdout="{}")
+        if args[1] == "get" and args[2] == "t-up":
+            self.calls.append(args)
+            return SimpleNamespace(stdout=json.dumps({"labels": {"herdr.space": "sp1"}}))
+        return super().__call__(args, **kwargs)
+
+
+def test_session_gets_its_own_named_herdr_tab(tmp_path, monkeypatch):
+    monkeypatch.setenv("HC_TERMINAL_ID", "t-up")
+    module = example(tmp_path)
+    fake = FakeHerdr()
+    Harness([module], run=fake).ensure_session(module)
+    launch = next(c for c in fake.calls if c[:2] == ["hc", "run"])
+    assert launch[launch.index("--label") + 1] == "herdr.space=sp1"
+    assert ["herdr-app", "do", "tab.rename", "--id", "tb9", "--name", f"jarvis-{module.name}"] in fake.calls
+
+
+def test_no_herdr_space_means_no_label(tmp_path, monkeypatch):
+    monkeypatch.delenv("HC_TERMINAL_ID", raising=False)
+    module = example(tmp_path)
+    fake = FakeHC()
+    Harness([module], run=fake).ensure_session(module)
+    launch = next(c for c in fake.calls if c[1] == "run")
+    assert "--label" not in launch
