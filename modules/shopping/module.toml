@@ -1,8 +1,8 @@
 name = "shopping"
-description = "Buy groceries on Tesco"
+description = "Buy or price anything online: groceries on Tesco, products like a chair on Amazon, cinema or event tickets; stops before payment"
 agent = "pi"
 model = "antigravity/gemini-3-8-flash:high"
 directory = "modules/shopping"
 task_size = "short"
 required_gates = ["pay"]
-mcp_servers = []
+mcp_servers = [] # Google Calendar (dated tickets) uses the global pi-composio extension.

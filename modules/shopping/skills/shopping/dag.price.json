@@ -1,0 +1,24 @@
+{
+  "task": "What does a PS5 cost on Argos",
+  "nodes": [
+    {
+      "id": "find",
+      "type": "step",
+      "do": "Read the shopping skill. Search argos.ie for a PS5. Read the price of each matching product. Change nothing: no cart, no sign-in.",
+      "needs": []
+    },
+    {
+      "id": "check",
+      "type": "test",
+      "do": "A price was read from the page for each product listed. Return product names and prices in the result output.",
+      "needs": ["find"],
+      "on_fail": "find"
+    },
+    {
+      "id": "pay",
+      "type": "gate",
+      "do": "Argos: <product>, <price>. Add to cart? A yes or no ends this run. Nothing is added in this task.",
+      "needs": ["check"]
+    }
+  ]
+}

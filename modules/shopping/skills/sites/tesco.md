@@ -1,13 +1,11 @@
----
-name: tesco
-description: Build and verify a Tesco Ireland grocery basket with ego-browser, check prices, stop before payment, and undo only this run's additions when asked.
----
 
-# Tesco basket
+# Site note: Tesco Ireland (tesco.ie)
+
+Page steps for the `shopping` skill. Read it first.
 
 Start every node result output with the key fact in 10 words or fewer, for example: "Basket total EUR 9.35, 3 items." Jarvis speaks at most 18 words. Put product names, quantities, charges, caveats and cleanup evidence after that short first sentence; do not omit them from the written result.
 
-Run `ego-browser skill` and follow its current guide. Use one TaskSpace per request; resume its numeric ID between calls. No other browser tool. These page steps were explored with a signed-in account in Phase A.
+Browser: ego-browser only. Use one TaskSpace per request. These page steps were explored with a signed-in account.
 
 ## Safety and starting state
 - Never click Checkout, book a slot, open a payment page, type card data, or place an order. Even a yes at the engine's final gate ends the run with **stopped before payment**.
@@ -17,7 +15,7 @@ Run `ego-browser skill` and follow its current guide. Use one TaskSpace per requ
 ## Search and choose
 1. Navigate the same Page to `https://www.tesco.ie/shop/en-IE/search?query=<encoded item>`. If the consent banner appears, choose `text="Reject all"`.
 2. Take a full-page snapshot. Each product list item shows its link, price, unit price and `add 1 <exact product name>` button. Use the actual name from the current page, not a guessed selector.
-3. Follow explicit preferences first. Search only for the items Arjun named. When he names an item with no brand or size, choose ordinary Tesco fresh milk (1 litre), a Tesco free-range medium egg carton, and an ordinary Tesco sliced white loaf. Skip sponsored products and premium/special-diet variants unless requested. One carton counts as one basket item, not one egg. Observed defaults (availability/prices may change):
+3. Follow explicit preferences first. Search only for the items Arjun named. When he names an item with no brand or size, choose ordinary Tesco fresh milk (1 litre), a Tesco free-range medium egg carton, and an ordinary Tesco sliced white loaf. Skip sponsored products and premium/special-diet variants unless requested. One carton counts as one basket item, not one egg. Observed examples (availability and prices change; read them live):
    - `Tesco Fresh Milk1ltr`: EUR 1.15, product 292769732.
    - `Tesco Free Range Eggs Medium Box Of 12`: EUR 4.35, product 260300754.
    - `Tesco Medium Sliced White Bread 800g`: EUR 0.85, product 306278295.

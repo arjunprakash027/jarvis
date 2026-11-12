@@ -1,0 +1,11 @@
+# Calendar hold (tickets with a date)
+
+Used only after a ticket purchase flow with a date reaches the final `pay` gate and Arjun answers yes. It is a tentative hold, never a booking.
+
+The global pi-composio extension is available even when global skills are disabled. Use `composio_search` for Google Calendar event tools and check googlecalendar's active connection. If not connected use `composio_connect` with toolkits `["googlecalendar"]`, report its link to the supervisor for Arjun, and leave Calendar pending. Never enter credentials or create an event before active connection confirmation. No MCP configuration is needed. The shopping flow can finish while Calendar is pending; report it as pending.
+
+Use `composio_get_schema` before each discovered tool, then `composio_execute` with its actual schema. Tools discovered during prep: GOOGLECALENDAR_EVENTS_LIST, GOOGLECALENDAR_CREATE_EVENT; discover a single-event read tool for verification too. For creation explicitly set `create_meeting_room=false`, `exclude_organizer=true`, `attendees=[]`, `send_updates="none"`, `calendar_id="primary"`, and `timezone="Europe/Dublin"`. Do not accept the create tool's default Meet link or invite/notification behavior. Use real ISO timestamps and confirm schemas in the executing session; never guess field names for other tools.
+
+After the final gate, if the final `pay` gate answer was yes, create exactly one event on the intended/default calendar. Use the selected showing or event's real date/start, Europe/Dublin timezone, and observed runtime for the end; disclose that runtime excludes unverified trailers. Title: `Tentative — <event> at <venue> (not booked)`. Description states two tickets were only selected; no purchase occurred and the seats are not guaranteed. No invitees or notifications.
+
+Before creation, look for an event matching this task/showing and check the task's recorded event ID, so retries do not duplicate it. Record the returned ID immediately and read the event back. On an ambiguous create timeout, search before retrying; if uncertain, stop rather than create another. If authorization was refused, do not create and report incomplete acceptance. Never call a calendar event proof of a cinema booking.
