@@ -2,14 +2,13 @@
 
 from dataclasses import dataclass
 import os
-from pathlib import Path
 
 from typesafe_sdk import Choice, Noul, TypeSafeClient
 
 from jarvis import router_questions as q
-from jarvis.modules import load_modules
+from jarvis.modules import REPO_ROOT, load_modules
 
-ENV_FILE = Path("/Users/arjunprakashrao/Drive/projects/jarvis/.env")
+ENV_FILE = REPO_ROOT / ".env"
 YES, NO = 0.7, 0.3  # a Noul above YES is yes, below NO is no, between is unsettled
 
 
