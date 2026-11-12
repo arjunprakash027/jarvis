@@ -18,6 +18,11 @@ class Harness:
         self.timeout = timeout
         self.locks = {m.name: threading.RLock() for m in modules}
 
+    def add(self, module: Module) -> None:
+        """Know a module added after start. Its session starts on its first request."""
+        self.modules.setdefault(module.name, module)
+        self.locks.setdefault(module.name, threading.RLock())
+
     def hc(self, *args: str, json_output: bool = True):
         proc = self.run(["hc", *args], capture_output=True, text=True, check=True)
         return json.loads(proc.stdout) if json_output else proc.stdout
