@@ -1,0 +1,9 @@
+{
+  "task": "Add milk, eggs and bread to my Tesco basket",
+  "nodes": [
+    {"id": "search", "type": "step", "do": "On tesco.ie search for milk, eggs and bread. For each, pick the default item (see the tesco skill) and note its name and price.", "needs": []},
+    {"id": "basket", "type": "step", "do": "Add each chosen item to the basket once.", "needs": ["search"], "undo": "Empty the basket (see the tesco skill)."},
+    {"id": "verify", "type": "test", "do": "Open the basket and confirm it holds exactly the 3 items (milk, eggs, bread) with quantity 1 each. Read the basket total.", "needs": ["basket"], "on_fail": "search"},
+    {"id": "pay", "type": "gate", "do": "Ask: Tesco basket, total is <TOTAL>. Do I pay? Do not open the payment page. Empty the basket after the answer.", "needs": ["verify"]}
+  ]
+}
