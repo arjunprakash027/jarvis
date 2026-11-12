@@ -38,3 +38,7 @@ uv run jarvis dag check modules/example/tasks/TASK_ID/dag.json
 Use `JARVIS_MODULES_DIR` or `--modules-dir` to select a different module root. Advanced local Restate overrides are `JARVIS_RESTATE_INGRESS` and `JARVIS_RESTATE_ADMIN`; an external server must already listen at those addresses.
 
 Ctrl-C or EOF stops input and waits for active tasks. Answer any waiting popup to let them finish. Do not force-stop a live purchase or expect an unanswered gate to complete. Task durability belongs to Restate; after a restart do not resubmit a request whose outcome is unknown. Jarvis does not automatically recreate the local input queue after process death.
+
+Live log: `jarvis up` prints one line per step (heard, route, session, plan, node, gate, done), plus a "still running" line every 30 s while a node works.
+The same lines go to `~/.local/share/jarvis/jarvis.log` (override with `JARVIS_LOG`). The engine runs in the `jarvis up` process, so its lines print in the same terminal.
+`uv run jarvis logs` shows the last 50 lines and follows the file; Ctrl-C stops it.

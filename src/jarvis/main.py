@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import engine, gate, router, voice
+from .log import event, log_path
 from .dag import check_dag
 from .harness import Harness
 from .modules import ModuleConfigError, load_modules
@@ -50,7 +51,7 @@ class Jarvis:
         try:
             current = self.reload()
         except ModuleConfigError as exc:  # a half-built module must not stop Jarvis
-            print(f"Module list not reloaded: {exc}", flush=True)
+            event("module", f"list not reloaded: {exc}")
             return
         for m in current:
             if m.name not in self.modules:
@@ -58,7 +59,7 @@ class Jarvis:
                 self.module_locks[m.name] = threading.Lock()
                 self.pools[m.name] = ThreadPoolExecutor(max_workers=1)
                 self.harness.add(m)
-                print(f"New module: {m.name}", flush=True)
+                event("module", f"new module picked up: {m.name}")
 
     def close(self):
         for pool in self.pools.values():
@@ -93,11 +94,11 @@ class Jarvis:
                 self.waiting.setdefault(key, value)
             return next(iter(self.waiting.values()), None)
 
-    def accept(self, text: str):
+    def accept(self, text: str, heard_seconds: float | None = None):
         text = text.strip()
         if not text:
             return None
-        print(f"You: {text}", flush=True)
+        event("heard", f'"{text}"' + (f" ({heard_seconds:.1f} s)" if heard_seconds else ""))
         waiting = self.oldest_gate()
         if waiting:
             picked = gate.pick_choices(text, waiting["choices"], waiting.get("multi", False)) if waiting.get("choices") else []
@@ -123,9 +124,11 @@ class Jarvis:
         request = f"{self.pending}\n{text}" if self.pending else text
         decision = self.route(request, {m.name: m.description for m in self.modules.values()})
         if decision.module is None:
+            event("route", f"{decision.kind}: asking \"{decision.question}\"")
             self.pending = "" if decision.kind == "no_fit" else request
             self.tell(decision.question or "No module fits.")
             return None
+        event("route", f"{decision.module} ({decision.score:.2f}) · detail ok" + (" · long task" if decision.long_task else ""))
         self.pending = ""
         module = self.modules[decision.module]
         future = self.pools[module.name].submit(self.run_task, module, request, decision.long_task)
@@ -146,6 +149,7 @@ class Jarvis:
                         problems = check_dag(dag, module.required_gates)
                     except (json.JSONDecodeError, FileNotFoundError) as exc:
                         problems = [str(exc)]
+                    event("plan", "check OK" if not problems else f"check failed: {problems[0][:80]}")
                     if not problems:
                         break
                     errors = "; ".join(problems)
@@ -153,6 +157,7 @@ class Jarvis:
                     raise ValueError(f"DAG rejected after two repairs: {errors}")
                 invocation = self.submit(module.name, task_id, dag, module.required_gates)
                 submitted = True
+                event("task", f"{module.name}: submitted to Restate")
                 # Attach timeouts do not resubmit the DAG or release the module queue.
                 while True:
                     try:
@@ -162,12 +167,14 @@ class Jarvis:
                         # A lost connection is not evidence that this invocation ended.
                         # Keep its queue occupied; never plan a second task in its session.
                         threading.Event().wait(1)
+                event("result", f"{module.name}: {outcome['status']}")
                 message = f"{module.name}: {outcome['status']}. {outcome.get('reason', '')}"
                 if outcome.get("trace"):
                     message += "\n" + "\n".join(outcome["trace"])
                 self.tell(message)
                 return outcome
             except Exception as exc:
+                event("result", f"{module.name}: error: {type(exc).__name__}")
                 self.tell(f"{module.name}: {type(exc).__name__}: {exc}")
                 return {"status": "error", "reason": str(exc)}
             finally:
@@ -222,10 +229,12 @@ def up(modules_dir: Path, *, text: bool = False) -> int:
         fixture = Path(__file__).resolve().parents[2] / "tests/fixtures/request.wav"
         voice.transcribe(fixture)  # warm whisper once; the first transcription is slow
     print("Jarvis ready. Ctrl-C to stop.", flush=True)
+    event("ready", "log file: " + str(log_path()))
     try:
         while True:
             try:
-                app.accept(input("> ") if text else voice.listen())
+                line = input("> ") if text else voice.listen()
+                app.accept(line, None if text else voice.last_seconds)
             except (OSError, ValueError, RuntimeError) as exc:
                 app.tell(f"Request failed: {exc}")
     except (EOFError, KeyboardInterrupt):

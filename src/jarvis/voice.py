@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 import tempfile
+import time
 import wave
 
 import sounddevice as sd
@@ -71,6 +72,7 @@ def _record_in_child() -> bytes:
 
 
 RECORDER = _record_in_child
+last_seconds = 0.0  # how long the last transcription took, for the live log
 
 
 def listen() -> str:
@@ -79,6 +81,7 @@ def listen() -> str:
     frames = RECORDER()
     if not frames:
         raise RuntimeError("The microphone recorded no audio.")
+    global last_seconds
     with tempfile.TemporaryDirectory(prefix="jarvis-recording-") as directory:
         wav_path = Path(directory) / "request.wav"
         with wave.open(str(wav_path), "wb") as recording:
@@ -86,7 +89,10 @@ def listen() -> str:
             recording.setsampwidth(2)
             recording.setframerate(SAMPLE_RATE)
             recording.writeframes(frames)
-        return transcribe(wav_path)
+        started = time.monotonic()
+        text = transcribe(wav_path)
+        last_seconds = time.monotonic() - started
+        return text
 
 
 def speak(text: str) -> None:

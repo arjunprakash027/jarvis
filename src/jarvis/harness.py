@@ -8,14 +8,17 @@ import time
 import uuid
 from pathlib import Path
 
+from .log import event
 from .modules import Module
 
 
 class Harness:
-    def __init__(self, modules: list[Module], *, run=subprocess.run, timeout: float = 600):
+    def __init__(self, modules: list[Module], *, run=subprocess.run, timeout: float = 600,
+                 clock=time.monotonic, beat: float = 30):
         self.modules = {m.name: m for m in modules}
         self.run = run
         self.timeout = timeout
+        self.clock, self.beat = clock, beat  # a heartbeat line every `beat` seconds of waiting
         self.locks = {m.name: threading.RLock() for m in modules}
 
     def add(self, module: Module) -> None:
@@ -52,6 +55,7 @@ class Harness:
                     raise RuntimeError(f"{name} is blocked; answer its dialog yourself")
                 if "--model" in argv and argv[argv.index("--model") + 1] != module.model:
                     raise RuntimeError(f"{name} was started with a different model")
+                event("session", f"{name}: reused ({module.model})")
                 return name
             if module.agent != "pi":
                 raise ValueError("Jarvis modules require agent = 'pi'")
@@ -79,13 +83,19 @@ class Harness:
                         if path.suffix in (".ts", ".js"):
                             args.extend(["-e", str(path)])
             self.hc(*args)
+            event("session", f"{name}: started ({module.model})")
             self._wait(name)
             return name
 
-    def _wait(self, name: str) -> None:
+    def _wait(self, name: str, label: str = "") -> None:
         deadline = time.monotonic() + self.timeout
+        start = self.clock()
+        due = self.beat
         while time.monotonic() < deadline:
             reply = self.hc("wait", name, "--timeout", "10")
+            if label and not reply.get("ended") and self.clock() - start >= due:
+                event("node", f"{label}: still running ({int(self.clock() - start)} s)")
+                due += self.beat
             status = reply.get("status")
             if status in ("blocked", "error") or reply.get("reason") == "exit":
                 raise RuntimeError(f"{name}: {status or 'exited'}; inspect with hc read {name}")
@@ -101,16 +111,17 @@ class Harness:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def send_and_wait(self, module: Module, text: str) -> str:
+    def send_and_wait(self, module: Module, text: str, label: str = "") -> str:
         with self.locks[module.name]:
             name = self.ensure_session(module)
             reply = self.hc("send", name, text)
             if reply.get("started") is not True:
                 raise RuntimeError(f"hc did not deliver to {name}; inspect before retrying")
-            self._wait(name)
+            self._wait(name, label)
             return self.hc("read", name, "--lines", "40", json_output=False)
 
     def _request(self, module: Module, task_id: str, text: str, node_id: str = "") -> dict:
+        label = node_id or "plan"
         with self.locks[module.name]:
             directory = self.task_dir(module, task_id) / "nodes"
             directory.mkdir(exist_ok=True)
@@ -120,7 +131,7 @@ class Harness:
             self.send_and_wait(module, text + f'\nWrite your result JSON to {path}: '
                                '{"ok": true or false, "output": "plain result or failure reason"} '
                                '(add "choices": ["...", ...] when Arjun must pick from options). '
-                               'Write the file before ending your turn. Do not start another session.')
+                               'Write the file before ending your turn. Do not start another session.', label)
             result = json.loads(path.read_text())
             if not isinstance(result, dict) or type(result.get("ok")) is not bool or not isinstance(result.get("output"), str) \
                     or not all(isinstance(c, str) for c in result.get("choices", [])):
@@ -140,7 +151,9 @@ class Harness:
         result = self._request(module, task_id, prompt)
         if not result["ok"]:
             raise RuntimeError(result["output"])
-        return json.loads((directory / "dag.json").read_text())
+        dag = json.loads((directory / "dag.json").read_text())
+        event("plan", f"dag.json written: {len(dag.get('nodes', []))} nodes")
+        return dag
 
     def executor(self, job: dict) -> dict:
         module = self.modules[job["module"]]
@@ -166,7 +179,10 @@ class Harness:
             deadline = time.monotonic() + self.timeout
             while time.monotonic() < deadline:
                 try:
-                    if any(e.get("type") == "compaction" and e.get("id") not in before for e in entries()):
+                    new = [e for e in entries() if e.get("type") == "compaction" and e.get("id") not in before]
+                    if new:
+                        was = new[-1].get("tokensBefore")
+                        event("compact", f"{name}: compacted" + (f" (was {was // 1000}k tokens)" if was else ""))
                         return
                 except json.JSONDecodeError:  # pi may be appending a line right now
                     pass
@@ -178,7 +194,7 @@ class Harness:
                     raise RuntimeError(f"{name} exited during compaction")
                 if info.get("turn", 0) > previous_turn and status.get("state") == "error":
                     if any(reason in status.get("msg", "") for reason in ("Nothing to compact", "Already compacted")):
-                        print(f"{name}: nothing new to compact")
+                        event("compact", f"{name}: nothing new to compact")
                         return
                     raise RuntimeError(f"{name}: {status.get('msg', 'compaction failed')}")
                 threading.Event().wait(0.5)
