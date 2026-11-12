@@ -1,0 +1,62 @@
+[
+  {
+    "request": "add oat milk too",
+    "expect": "shopping"
+  },
+  {
+    "request": "order me a basket of groceries from Tesco: milk, eggs, bread",
+    "expect": "shopping"
+  },
+  {
+    "request": "I need to restock the fridge, get bananas and pasta",
+    "expect": "shopping"
+  },
+  {
+    "request": "book two tickets for Dune at Cineworld Dublin tomorrow at 8pm",
+    "expect": "movies"
+  },
+  {
+    "request": "what's on at the cinema tonight, get me two seats for the best one",
+    "expect": "movies"
+  },
+  {
+    "request": "get me tickets for the new Bond film on Saturday evening",
+    "expect": "movies"
+  },
+  {
+    "request": "build a module that cleans up my downloads folder",
+    "expect": "builder"
+  },
+  {
+    "request": "make me a new tool that renames my photos by date",
+    "expect": "builder"
+  },
+  {
+    "request": "create a Jarvis module to tidy my workspace",
+    "expect": "builder"
+  },
+  {
+    "request": "do the thing",
+    "expect": "detail"
+  },
+  {
+    "request": "book tickets",
+    "expect": "detail"
+  },
+  {
+    "request": "order some stuff",
+    "expect": "which"
+  },
+  {
+    "request": "get me something for tonight",
+    "expect": "which"
+  },
+  {
+    "request": "what's the weather in Cork tomorrow",
+    "expect": "no_fit"
+  },
+  {
+    "request": "write a poem about the sea",
+    "expect": "no_fit"
+  }
+]
