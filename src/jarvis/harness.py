@@ -1,6 +1,7 @@
 """The module's one interactive pi terminal, addressed by its stable hc name."""
 
 import json
+import os
 import re
 import subprocess
 import threading
@@ -69,7 +70,9 @@ class Harness:
             sessions = self.session_dir(module)
             sessions.mkdir(parents=True, exist_ok=True)
             session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, str(module.path.resolve())))
-            args = ["run", "--bg", "--name", name, "--cwd", str(module.path), "pi",
+            space = self._herdr_space()
+            label = ["--label", f"herdr.space={space}"] if space else []
+            args = ["run", "--bg", "--name", name, *label, "--cwd", str(module.path), "pi",
                     "--model", module.model, "--session-dir", str(sessions),
                     "--session-id", session_id, "--no-context-files", "--no-skills", "--no-prompt-templates"]
             for path in module.claude_md_files:
@@ -82,10 +85,37 @@ class Harness:
                     for path in sorted(directory.iterdir()):
                         if path.suffix in (".ts", ".js"):
                             args.extend(["-e", str(path)])
-            self.hc(*args)
+            started = self.hc(*args)
             event("session", f"{name}: started ({module.model})")
+            if space:
+                self._name_tab(started.get("address", ""), name)
             self._wait(name)
             return name
+
+    def _herdr_space(self) -> str:
+        """The Herdr space that `jarvis up` runs in, so each module session gets its own visible tab there."""
+        me = os.environ.get("HC_TERMINAL_ID")
+        if not me:
+            return ""
+        try:
+            return (self.hc("get", me).get("labels") or {}).get("herdr.space", "")
+        except Exception:
+            return ""  # no Herdr app: the session still runs in hc
+
+    def _name_tab(self, address: str, name: str) -> None:
+        """Name the session's tab after it (cosmetic; the app may adopt the tab a moment later)."""
+        for _ in range(10):
+            try:
+                proc = self.run(["herdr-app", "ls"], capture_output=True, text=True, check=True)
+                for space in json.loads(proc.stdout).get("spaces", []):
+                    for tab in space.get("tabs", []):
+                        if any(t.get("terminal") == address for t in tab.get("terminals", [])):
+                            self.run(["herdr-app", "do", "tab.rename", "--id", tab["id"], "--name", name],
+                                     capture_output=True, text=True, check=False)
+                            return
+            except Exception:
+                return
+            time.sleep(0.3)
 
     def _wait(self, name: str, label: str = "") -> None:
         deadline = time.monotonic() + self.timeout
