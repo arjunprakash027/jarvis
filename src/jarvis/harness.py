@@ -173,7 +173,10 @@ class Harness:
         prompt = (f"Plan this request, do not execute any steps: {request}\n"
                   f"Write {directory / 'dag.json'} using the base DAG contract. "
                   f"Required gate ids: {list(module.required_gates)}. The engine owns all gates. "
-                  "Every DAG needs a test node. Stop after writing the plan.\n")
+                  "Every DAG needs a test node. Stop after writing the plan.\n"
+                  f"Use only your system prompt and this module's own files in {module.path}. "
+                  "Do not read or search the Jarvis source, tests, docs or git history: the DAG rules you need "
+                  "are in your system prompt. Plan only what this request asks for.\n")
         if long_task or module.task_size == "long":
             prompt += f"First write a short spec to {directory / 'spec.md'}.\n"
         if errors:

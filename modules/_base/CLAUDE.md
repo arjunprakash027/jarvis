@@ -49,3 +49,9 @@ Every Jarvis module session loads this file first and must follow all four base 
 ## Keep it short
 
 Jarvis speaks only the first 18 words of a result or a gate question. Start every result with the key fact in 10 words or less, for example "Basket total EUR 9.35, 3 items." Put detail after it.
+
+## Stay in your module
+
+- Work only with this module's folder: its CLAUDE.md, skills, extensions and `tasks/`.
+- Do not read or search the Jarvis source (`src/`), tests, docs or git history. Everything you need is here. If something is missing, say so in your result instead of searching.
+- Plan only what the request asks. A question ("what does X cost?") is a read-only task: do not change anything.
