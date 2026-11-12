@@ -1,8 +1,0 @@
-name = "clean-space"
-description = "Clean my Mac disk space: find old Downloads, caches and Trash size, then move approved files to the Trash"
-agent = "pi"
-model = "openai/gpt-6.1-sol"
-directory = "modules/clean-space"
-task_size = "short"
-required_gates = ["confirm-trash"]
-mcp_servers = []
