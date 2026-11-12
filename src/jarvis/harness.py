@@ -72,10 +72,12 @@ class Harness:
                 args.extend(["--append-system-prompt", str(path)])
             if module.skills_dir.is_dir():
                 args.extend(["--skill", str(module.skills_dir)])
-            if module.extensions_dir.is_dir():
-                for path in sorted(module.extensions_dir.iterdir()):
-                    if path.suffix in (".ts", ".js"):
-                        args.extend(["-e", str(path)])
+            # The base extensions come first and every module gets them.
+            for directory in (module.base.base_dir / "extensions", module.extensions_dir):
+                if directory.is_dir():
+                    for path in sorted(directory.iterdir()):
+                        if path.suffix in (".ts", ".js"):
+                            args.extend(["-e", str(path)])
             self.hc(*args)
             self._wait(name)
             return name
@@ -108,12 +110,13 @@ class Harness:
             self._wait(name)
             return self.hc("read", name, "--lines", "40", json_output=False)
 
-    def _request(self, module: Module, task_id: str, text: str) -> dict:
+    def _request(self, module: Module, task_id: str, text: str, node_id: str = "") -> dict:
         with self.locks[module.name]:
             directory = self.task_dir(module, task_id) / "nodes"
             directory.mkdir(exist_ok=True)
             # A fresh path per attempt prevents an old node result from passing a retry.
-            path = directory / f"{uuid.uuid4().hex}.json"
+            name = f"{node_id}-{uuid.uuid4().hex[:8]}" if node_id else uuid.uuid4().hex
+            path = directory / f"{name}.json"
             self.send_and_wait(module, text + f'\nWrite your result JSON to {path}: '
                                '{"ok": true or false, "output": "plain result or failure reason"}. '
                                'Write the file before ending your turn. Do not start another session.')
@@ -142,7 +145,8 @@ class Harness:
         return self._request(module, job["task_id"],
                              f"Task: {job['task']}\nNode: {job['node']['id']} ({job['action']}, attempt {job['attempt']})\n"
                              f"Execute only this instruction: {job['instruction']}\n"
-                             "Report ok=false if it failed (including a failing test). Never answer or skip gates.")
+                             "Report ok=false if it failed (including a failing test). Never answer or skip gates.",
+                             node_id=job["node"]["id"])
 
     def compact(self, module_name: str) -> None:
         module = self.modules[module_name]
