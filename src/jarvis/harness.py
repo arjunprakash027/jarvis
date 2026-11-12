@@ -9,7 +9,7 @@ import time
 import uuid
 from pathlib import Path
 
-from .log import event
+from .log import event, headline
 from .modules import Module
 
 
@@ -229,3 +229,52 @@ class Harness:
                     raise RuntimeError(f"{name}: {status.get('msg', 'compaction failed')}")
                 threading.Event().wait(0.5)
             raise TimeoutError(f"Compaction not confirmed for {name}; inspect its terminal")
+
+    def cleanup(self, module_name: str, task_id: str, dag: dict, status: str, trace: list[str]) -> None:
+        """Write tasks/<id>/result.md, then delete tmp/ and nodes/ except paths in the DAG's keep.
+
+        Only paths that resolve inside the task folder are touched."""
+        module = self.modules[module_name]
+        task = (module.tasks_dir / task_id).resolve()
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+", task_id) or not task.is_dir():
+            return
+        heads = {}  # node id -> headline of its newest result file
+        files = sorted((task / "nodes").glob("*.json"), key=lambda p: p.stat().st_mtime) if (task / "nodes").is_dir() else []
+        for path in files:
+            try:
+                data = json.loads(path.read_text())
+                heads[path.stem.rsplit("-", 1)[0] if "-" in path.stem else path.stem] = (data.get("ok"), headline(data.get("output", "")))
+            except (OSError, ValueError, AttributeError):
+                pass
+        lines = [f"# Result: {dag.get('task', task_id)}", "", f"Status: {status}", ""]
+        for node in dag.get("nodes", []):
+            ok, head = heads.get(node["id"], (None, ""))
+            state = "ok" if ok is True else "failed" if ok is False else "not run"
+            lines.append(f"- {node['id']}: {state}" + (f" - {head}" if head else ""))
+        (task / "result.md").write_text("\n".join(lines) + "\n")
+
+        keep = []
+        for rel in dag.get("keep", []):
+            path = (task / rel).resolve()
+            if path.is_relative_to(task):
+                keep.append(path)
+            else:
+                event("cleanup", f"{module_name}: refused keep path outside the task folder: {rel}")
+        count = size = 0
+        for name in ("tmp", "nodes"):
+            top = task / name
+            if not top.exists() or top.is_symlink() or not top.resolve().is_relative_to(task):
+                continue
+            for path in sorted(top.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+                real = path.resolve()
+                if any(real == k or real.is_relative_to(k) or k.is_relative_to(real) for k in keep):
+                    continue  # kept, or the folder of something kept
+                if path.is_symlink() or path.is_file():
+                    size += path.lstat().st_size
+                    path.unlink()
+                    count += 1
+                elif path.is_dir() and not any(path.iterdir()):
+                    path.rmdir()
+            if top.is_dir() and not any(top.iterdir()):
+                top.rmdir()
+        event("cleanup", f"{module_name}: removed {count} files ({size / 1e6:.1f} MB), kept result.md")

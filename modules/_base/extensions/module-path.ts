@@ -56,10 +56,18 @@ function latestTask(moduleDir: string): string | undefined {
   return sorted.length ? path.join(tasks, sorted[0].name) : undefined;
 }
 
+/** After cleanup nodes/ is gone: read the node's line from result.md instead. */
+function finishedStatus(taskDir: string, id: string): string {
+  try {
+    const line = fs.readFileSync(path.join(taskDir, "result.md"), "utf8").split("\n").find((l) => l.startsWith(`- ${id}: `));
+    return line ? line.slice(`- ${id}: `.length) : "waiting";
+  } catch { return "waiting"; }
+}
+
 /** Newest result file for the node (named <id>.json or <id>-<suffix>.json) decides: done, failed or waiting. */
 function nodeStatus(taskDir: string, id: string): string {
   const dir = path.join(taskDir, "nodes");
-  if (!fs.existsSync(dir)) return "waiting";
+  if (!fs.existsSync(dir)) return finishedStatus(taskDir, id);
   const files = fs.readdirSync(dir)
     .filter((name) => name.endsWith(".json") && (name === `${id}.json` || name.startsWith(`${id}-`)))
     .map((name) => ({ file: path.join(dir, name), time: fs.statSync(path.join(dir, name)).mtimeMs }))

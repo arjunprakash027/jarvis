@@ -21,7 +21,7 @@ A Jarvis module `clean-space` that finds disk space Arjun can free, shows it, as
 
 ## What a run does
 
-1. Scan (read only; inventory paths and errors stay in ignored task files, never git). Never follow symlinks. Caches are informational only; exclude live app caches from automatic cleanup. Freeze the exact candidate paths and sizes before the gate:
+1. Scan (read only; inventory paths and errors stay in ignored tasks/<id>/tmp/ files, never git). Never follow symlinks. Caches are informational only; exclude live app caches from automatic cleanup. Freeze the exact candidate paths and sizes before the gate:
 
    - Caches: size of each folder in `~/Library/Caches` (`du -sk`), largest 10.
    - Downloads: top-level items in `~/Downloads` older than N days (default 30; the request may give N), with sizes.

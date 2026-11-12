@@ -202,7 +202,7 @@ def start_services(app: Jarvis, *, service_port=9080):
 
     def serve():
         try:
-            engine.serve(app.harness.executor, app.open_gate, app.harness.compact, port=service_port)
+            engine.serve(app.harness.executor, app.open_gate, app.harness.compact, app.harness.cleanup, port=service_port)
         except BaseException as exc:
             errors.append(exc)
 

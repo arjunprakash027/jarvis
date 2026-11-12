@@ -209,3 +209,33 @@ def test_no_herdr_space_means_no_label(tmp_path, monkeypatch):
     Harness([module], run=fake).ensure_session(module)
     launch = next(c for c in fake.calls if c[1] == "run")
     assert "--label" not in launch
+
+
+def test_cleanup_writes_result_and_removes_temp_files(tmp_path):
+    module = example(tmp_path)
+    task = module.tasks_dir / "t1"
+    (task / "nodes").mkdir(parents=True)
+    (task / "tmp" / "sub").mkdir(parents=True)
+    for name in ("dag.json", "spec.md", "log.md"):
+        (task / name).write_text("x")
+    (task / "nodes" / "search-ab12cd34.json").write_text(json.dumps({"ok": True, "output": "Found 3 items. More."}))
+    (task / "tmp" / "scratch.txt").write_text("junk")
+    (task / "tmp" / "sub" / "keep.png").write_text("png")
+    (task / "tmp" / "sub" / "drop.png").write_text("png")
+    (module.path.parent / "outside.txt").write_text("safe")
+    dag = {"task": "T", "keep": ["tmp/sub/keep.png", "../../outside.txt"],
+           "nodes": [{"id": "search"}, {"id": "pay"}]}
+    Harness([module]).cleanup(module.name, "t1", dag, "done", [])
+    assert not (task / "nodes").exists() and not (task / "tmp" / "scratch.txt").exists()
+    assert not (task / "tmp" / "sub" / "drop.png").exists()
+    assert (task / "tmp" / "sub" / "keep.png").exists()  # kept path survives
+    assert all((task / n).exists() for n in ("dag.json", "spec.md", "log.md"))
+    assert (module.path.parent / "outside.txt").read_text() == "safe"  # escaping keep path is refused
+    result = (task / "result.md").read_text()
+    assert "Status: done" in result and "- search: ok - Found 3 items" in result and "- pay: not run" in result
+
+
+def test_cleanup_skips_missing_task_folder(tmp_path):
+    module = example(tmp_path)
+    Harness([module]).cleanup(module.name, "nope", {"task": "T", "nodes": []}, "stopped", [])
+    assert not (module.tasks_dir / "nope").exists()
