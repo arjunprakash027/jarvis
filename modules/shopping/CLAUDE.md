@@ -6,9 +6,10 @@ Builds a grocery basket on tesco.ie with ego-browser and stops at a payment gate
 - Use the `tesco` skill for every page step. Browser: ego-browser only.
 - Never pay. Never type or show card data. Never open the payment page.
 - If Tesco asks for a sign-in, do not enter credentials. Hand the ego-browser task space to the user (`task.handOff()`) and wait.
-- The last DAG node is the gate `pay`. Its question states the basket total, for example: "Tesco basket, total is EUR 4.20. Do I pay?"
-- Empty the basket after the run, whatever the gate answer is.
+- The last DAG node is the engine-owned gate `pay`, on the basket review page. Its question states the current estimated total and included charges; disclose that delivery is not selected. Replace any placeholder with the observed amount before gate dispatch.
+- Either gate answer ends this demo with "stopped before payment". A yes never authorizes checkout, card entry or an order.
+- Clean up this run's additions after the run, whatever the gate answer is. Verify an empty starting basket first; never delete pre-existing groceries. See the skill for the confirmation dialog and empty-basket checks.
 
 ## DAG for a basket request
-`search` (pick one default item per request) -> `basket` (add each item, undo: empty the basket) -> `verify` (test: basket holds every item, on_fail `search`) -> `pay` (gate).
-Write it to `tasks/<id>/dag.json` first. `tasks/<id>/sample-dag.json` style: see `skills/tesco/dag.sample.json`.
+`search` (check starting basket; pick one default item per request) -> `basket` (add each item, undo: remove this run's additions) -> `verify` (test: exactly the 3 requested products, quantity 1 each, and read estimated total; on_fail `search`) -> `pay` (gate).
+Write it to `tasks/<id>/dag.json` first; see `skills/tesco/dag.sample.json`. Record verification and cleanup in `tasks/<id>/log.md`. Task files stay out of git. The sample is a plan, not evidence of a completed engine run.

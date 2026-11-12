@@ -1,9 +1,9 @@
 {
   "task": "Add milk, eggs and bread to my Tesco basket",
   "nodes": [
-    {"id": "search", "type": "step", "do": "On tesco.ie search for milk, eggs and bread. For each, pick the default item (see the tesco skill) and note its name and price.", "needs": []},
-    {"id": "basket", "type": "step", "do": "Add each chosen item to the basket once.", "needs": ["search"], "undo": "Empty the basket (see the tesco skill)."},
-    {"id": "verify", "type": "test", "do": "Open the basket and confirm it holds exactly the 3 items (milk, eggs, bread) with quantity 1 each. Read the basket total.", "needs": ["basket"], "on_fail": "search"},
-    {"id": "pay", "type": "gate", "do": "Ask: Tesco basket, total is <TOTAL>. Do I pay? Do not open the payment page. Empty the basket after the answer.", "needs": ["verify"]}
+    {"id": "search", "type": "step", "do": "Inspect the Tesco trolley and require an empty starting basket; otherwise stop for instructions. Search milk, eggs and bread, pick sensible defaults using the tesco skill and note their names and prices.", "needs": []},
+    {"id": "basket", "type": "step", "do": "Add each chosen pack to the basket once; wait for saved quantities and totals before navigating. Inspect before retrying to avoid duplicate additions.", "needs": ["search"], "undo": "Remove only this run's added quantities and verify cleanup; empty the whole basket only if no unrelated groceries exist (see the tesco skill)."},
+    {"id": "verify", "type": "test", "do": "On the trolley review page confirm exactly milk, eggs and bread with quantity 1 pack each. Read Total (estimated), Guide price and minimum-basket charge. Record the amounts and lack of a delivery slot; replace the pay question placeholder with these observed amounts before gate dispatch.", "needs": ["basket"], "on_fail": "search"},
+    {"id": "pay", "type": "gate", "do": "Ask: Tesco basket has 3 items, estimated total <OBSERVED_TOTAL_AND_CHARGES>; delivery is not selected. End the demo here, stopped before payment? Either answer ends the demo; never click Checkout or open payment. Clean up this run's additions afterward.", "needs": ["verify"]}
   ]
 }
