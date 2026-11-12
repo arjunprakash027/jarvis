@@ -45,10 +45,12 @@ SERVICE = textwrap.dedent(
         fails = json.loads((D / "scenario.json").read_text()).get(task, {}).get(node, 0)
         if action == "do" and len(before) < fails:
             return {"ok": False, "output": "fake failure"}
+        if job["node"]["id"] == "find":
+            return {"ok": True, "output": "two films", "choices": ["Rocky", "Dune"]}
         return {"ok": True, "output": "fine"}
 
-    def open_gate(gate_id, task, question):
-        log(kind="gate", id=gate_id, task=task, question=question)
+    def open_gate(gate_id, task, question, choices=None, multi=False):
+        log(kind="gate", id=gate_id, task=task, question=question, choices=choices, multi=multi)
 
     def compact(module):
         log(kind="compact", module=module)
@@ -374,3 +376,32 @@ def test_gate_question_shows_needed_output(stack):
     stack.next_gate(task)
     question = [e for e in stack.events("gate") if e["task"] == task][-1]["question"]
     assert question.endswith("fine")
+
+
+def test_gate_gets_choices_of_the_node_it_needs(stack):
+    task = "gate-choices"
+    dag = {"task": task, "nodes": [
+        {"id": "find", "type": "step", "do": "Find films", "needs": []},
+        {"id": "pick", "type": "gate", "do": "Which film?", "needs": ["find"], "multi": True},
+        {"id": "seat", "type": "step", "do": "Seat it", "needs": ["pick"]},
+        {"id": "check", "type": "test", "do": "Check", "needs": ["seat"]},
+    ]}
+    inv = stack.submit("m-choices", task, dag)
+    gate = stack.gates(task) or stack.next_gate(task)
+    gate = stack.gates(task)[0]
+    assert gate["choices"] == ["Rocky", "Dune"] and gate["multi"] is True
+    status = engine._http("POST", f"{stack.ingress}/module/m-choices/status")
+    assert status["choices"] == ["Rocky", "Dune"]
+    stack.answer(gate["id"], "yes", "Rocky, Dune")
+    assert stack.result(inv)["status"] == "done"
+
+
+def test_gate_without_choices_keeps_plain_arguments(stack):
+    task = "gate-plain"
+    stack.submit("m-plain", task)
+    stack.next_gate(task)
+    assert stack.gates(task)[0]["choices"] is None
+
+
+def test_gate_answer_keeps_exact_choice_case():
+    assert engine.answer_text({"answer": "yes", "text": " I Play Rocky 19:30 "}) == "I Play Rocky 19:30"

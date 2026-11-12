@@ -4,13 +4,13 @@
     {
       "id": "find_showings",
       "type": "step",
-      "do": "Read cineworld skill. Use ego-browser to find actual upcoming Saturday evening Cineworld Dublin film/time options, runtime and date in Europe/Dublin. Save options in task log. No seat or payment action.",
+      "do": "Read cineworld skill. Use ego-browser to find actual upcoming Saturday evening Cineworld Dublin film/time options, runtime and date in Europe/Dublin. Save options in task log. Return each film/time option as one string in the result's \"choices\" list (for example \"I Play Rocky, Sat 14 Nov 19:30\"). No seat or payment action.",
       "needs": []
     },
     {
       "id": "choose_showing",
       "type": "gate",
-      "do": "Cineworld Dublin: choose one of the live Saturday film/time options from find_showings. Two standard Adult tickets are the default unless you state a different type. Choose a film and time; if that film has only one offered time, its name suffices.",
+      "do": "Cineworld Dublin: choose one of the live Saturday film/time options from find_showings. Two standard Adult tickets are the default unless you state a different type. Pick one entry from the list shown; Other lets you type. If that film has only one offered time, its name suffices.",
       "needs": [
         "find_showings"
       ]

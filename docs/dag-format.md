@@ -25,6 +25,7 @@ A task is one `dag.json` file. The session writes it. The engine checks it and t
 - `do`: the instruction. For a gate, it is the question.
 - `needs`: the ids that must finish first. Use `[]` for none.
 - `undo`: optional. The instruction that reverses a step.
+- `multi`: optional, on a `gate` only. `true` lets Arjun pick several choices.
 - `on_fail`: optional, on a `test` only. The id of an earlier node that the test needs.
 
 ## What the check refuses
@@ -54,6 +55,16 @@ The engine runs the nodes in topological order. Nodes with the same rank keep th
 - The popup has the task name, the question, Yes, No and a text field. The engine also speaks the question with `say`. The first answer wins.
 - For a retry, skip or stop question, type `retry`, `skip` or `stop` in the text field. Yes means retry. No means stop.
 - A voice answer calls `jarvis.gate.resolve_gate(gate_id, {"answer": "yes", "text": ""})`.
+
+## Choices at a gate
+
+When Arjun must pick from options, do not make him type. The step before the gate returns its options in the node result JSON:
+
+```json
+{"ok": true, "output": "Three Saturday films found.", "choices": ["I Play Rocky, 19:30", "Dune, 20:00"]}
+```
+
+A gate that `needs` that step then shows a native list popup with these entries plus "Other…" (which opens the text box). Add `"multi": true` to the gate node to allow several picks. Cancel means no. The answer reaches the next node as the exact text, for example `Arjun answered yes: I Play Rocky, 19:30` (several picks are joined with a comma). Spoken or typed answers can name a choice by number ("2", "two") or by its name. Use choices only for real options; keep each string short and unique. A gate with no choices stays a Yes/No box with a text field.
 
 ## Result
 

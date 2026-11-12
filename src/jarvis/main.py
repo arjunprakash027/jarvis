@@ -71,10 +71,13 @@ class Jarvis:
     def _status(self, name):
         return http("POST", f"{gate.ingress_url()}/module/{urllib.parse.quote(name, safe='')}/status")
 
-    def open_gate(self, gate_id, task, question):
+    def open_gate(self, gate_id, task, question, choices=None, multi=False):
+        info = {"id": gate_id, "task": task, "question": question}
+        if choices:
+            info.update(choices=choices, multi=multi)
         with self.gate_lock:
-            self.waiting[gate_id] = {"id": gate_id, "task": task, "question": question}
-        self.popup(gate_id, task, question)
+            self.waiting[gate_id] = info
+        self.popup(gate_id, task, question, *((choices, multi) if choices else ()))
 
     def oldest_gate(self):
         # Shared status is available even while the exclusive run sleeps at a gate.
@@ -97,6 +100,10 @@ class Jarvis:
         print(f"You: {text}", flush=True)
         waiting = self.oldest_gate()
         if waiting:
+            picked = gate.pick_choices(text, waiting["choices"], waiting.get("multi", False)) if waiting.get("choices") else []
+            if picked:  # a number or a name from the popup list
+                self.resolve(waiting["id"], {"answer": "yes", "text": ", ".join(picked)})
+                return None
             # The first word is the answer; the rest is detail, e.g. "yes, the 19:30 showing".
             first, _, rest = text.lower().strip(" .!?").partition(" ")
             answer, detail = first.strip(" ,.!?"), rest.strip(" ,.!?")
