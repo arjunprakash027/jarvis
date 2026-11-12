@@ -13,6 +13,12 @@ FIXTURE = Path(__file__).parent / "fixtures/request.wav"
 REQUEST = "Please add milk, eggs, and bread to my shopping basket for tomorrow morning."
 
 
+@pytest.fixture(autouse=True)
+def record_in_process(monkeypatch):
+    """Tests fake the microphone in this process, so use the in-process recorder."""
+    monkeypatch.setattr(voice, "RECORDER", voice._record_here)
+
+
 def test_transcribe_recorded_request():
     with wave.open(str(FIXTURE)) as recording:
         assert recording.getparams()[:3] == (1, 2, 16000)
