@@ -13,7 +13,7 @@ Read first: `modules/_base/CLAUDE.md`, `docs/module-contract.md`, `docs/dag-form
 
 Run it when the request arrives. The engine has not started yet.
 
-1. Pick a task id: `<yyyymmdd-hhmm>-<slug>`. The task folder is `modules/builder/tasks/<id>/`. Create it.
+1. Use the task id and absolute task folder from the harness prompt. The folder is `modules/builder/tasks/<id>/` under the repo root (`../..` from this session). Do not invent a second task folder. All `modules/` paths below are repo-relative. Run `uv` and `git` commands at that repo root.
 2. Write `tasks/<id>/spec.md`. Keep it short:
    - Goal in one sentence, and the target folder (for a new module, `modules/<name>/`).
    - Files to create and what each one does.
@@ -73,11 +73,12 @@ The build gets one ClickUp task. The list is `Jarvis Relay` (id `901617700405`, 
 
 ## 4. Module checklist (when the target is a new module)
 
-- `modules/<name>/module.toml` has exactly these 8 keys: `name`, `description`, `agent`, `model`, `directory`, `task_size`, `required_gates`, `mcp_servers`. `agent = "pi"`. Use `model = "antigravity/claude-sonnet-5-5"` unless the spec says otherwise. Never an Anthropic-billed Claude Code model. `description` is one plain line that the router reads.
+- `modules/<name>/module.toml` has exactly these 8 keys: `name`, `description`, `agent`, `model`, `directory`, `task_size`, `required_gates`, `mcp_servers`. `agent = "pi"`. Set `directory = "modules/<name>"` relative to the repo root; the harness requires it to resolve to the new module folder. Use `model = "openai/gpt-6.1-sol"` unless the spec says otherwise. Never an Anthropic-billed Claude Code model. `description` is one plain line that the router reads.
 - `modules/<name>/CLAUDE.md`: what the module is and what is in the folder.
 - `modules/<name>/skills/<skill-name>/SKILL.md`: how to do the task, with front matter `name` and `description`.
 - `modules/<name>/extensions/`: keep it, with a `.gitkeep` if empty.
-- Any module that deletes or changes user files lists a gate in `required_gates`, and its skill tells the session to write that gate into every DAG. Deletion moves files to the Trash with `trash`. Never `rm`.
+- Any module that deletes or changes user files lists a gate in `required_gates`, and its skill tells the session to write that gate into every DAG. Deletion moves files to the Trash with `trash`. Never `rm`. Freeze the exact candidate paths before the gate; show names, sizes, and the total. Do not follow symlinks, empty Trash, delete live app caches, or include new paths after approval. Trash does not free disk blocks until emptied: report moved bytes separately from free space. Never promise immediate reclaimed space.
+- For clean-space, ship a read-only scan and a real Trash/restore test using only unique throwaway fixtures, not user Downloads or live caches. The actual cleanup run must still ask its own gate. Keep scan inventories in the ignored task folder; never commit local filenames. Treat size/permission errors as partial coverage, not zero bytes.
 - Check that the module loads: `uv run jarvis modules` lists it.
 - Commit with `git add modules/<name> && git commit -m "feat(<name>): <one line>"`. Never push.
 

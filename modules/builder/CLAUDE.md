@@ -4,7 +4,7 @@ This module builds something new from a spoken request, most often a new Jarvis 
 
 ## Rules
 
-- The session runs in the repo root. Task files go in `modules/builder/tasks/<id>/` (`spec.md`, `dag.json`, `log.md`). Code goes in the target folder (for a new module, `modules/<name>/`). Never write code in `tasks/`.
+- The harness starts this session in `modules/builder/`. The repository root is `../..`; run repo commands with `cd ../..`. Paths below that start with `modules/` are relative to that root, not this session directory. Use the absolute task paths supplied by the harness (`spec.md`, `dag.json`, `log.md`); never pick a second task id. Code goes in the target folder (for a new module, `modules/<name>/`). Never write code in `tasks/`.
 - Follow the skill `skills/build-module/SKILL.md` for every build. It holds the planner step, the executor step, the ClickUp steps and the module checklist.
 - `module.toml` requires the gate `approve-plan`. The DAG must contain a `gate` node with that id. Do not skip it.
 - Commit on the current branch only. Never push. Never run `gh`.
