@@ -431,3 +431,10 @@ def test_cleanup_runs_once_after_compact_for_done_declined_and_stopped(stack):
         assert kinds == ["compact", "cleanup"]
         cleanup = next(e for e in events if e["kind"] == "cleanup" and e["module"] == module)
         assert cleanup["task_id"] == task and cleanup["status"] == status
+
+
+def test_gate_question_keeps_a_long_result():
+    run = engine._Run(None, {"dag": {"task": "t"}}, None, None, None)
+    run.outputs = {"verify": "Basket total EUR 7.35. " + "word " * 120 + "end"}
+    gate = {"id": "pay", "type": "gate", "do": "Pay?", "needs": ["verify"]}
+    assert run.gate_question(gate).endswith("end")
