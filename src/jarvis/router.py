@@ -21,6 +21,10 @@ class Judgments:
     detail: float  # Noul: enough detail to start
     long: float  # Noul: more than about 10 steps
 
+    def summary(self) -> str:
+        probs = ", ".join(f"{k}: {v:.2f}" for k, v in sorted(self.module_probs.items(), key=lambda kv: kv[1], reverse=True))
+        return f"probs: [{probs}] · fits: {self.fits:.2f} · detail: {self.detail:.2f} · long: {self.long:.2f}"
+
 
 @dataclass(frozen=True)
 class Route:
@@ -31,6 +35,7 @@ class Route:
     question: str | None = None
     long_task: bool = False
     score: float = field(default=0.0, compare=False)  # top module probability, for the live log
+    judgments: Judgments | None = field(default=None, compare=False)
 
 
 def build_state(request: str, modules: dict[str, str]) -> dict:
@@ -44,15 +49,15 @@ def decide(j: Judgments) -> Route:
     top, top_p = ranked[0]
     # No module fits: say so.
     if j.fits < NO:
-        return Route(kind="no_fit", question=q.SAY_NO_FIT)
+        return Route(kind="no_fit", question=q.SAY_NO_FIT, judgments=j)
     # Fit unsettled, or the top module is not clearly ahead: ask which one.
     if j.fits < YES or top_p < YES:
         second = ranked[1][0] if len(ranked) > 1 else "something else"
-        return Route(kind="which", question=q.ASK_WHICH.format(a=top, b=second))
+        return Route(kind="which", question=q.ASK_WHICH.format(a=top, b=second), judgments=j)
     # Detail missing or unsettled: ask for it.
     if j.detail < YES:
-        return Route(kind="detail", question=q.ASK_DETAIL)
-    return Route(module=top, long_task=j.long >= YES, score=top_p)
+        return Route(kind="detail", question=q.ASK_DETAIL, judgments=j)
+    return Route(module=top, long_task=j.long >= YES, score=top_p, judgments=j)
 
 
 def _api_key() -> str | None:
