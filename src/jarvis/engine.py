@@ -53,9 +53,9 @@ def _choice(answer: object) -> str:
 
 
 class _Run:
-    def __init__(self, ctx, req, executor, open_gate, compact) -> None:
+    def __init__(self, ctx, req, executor, open_gate, compact, cleanup=None) -> None:
         self.ctx, self.req = ctx, req
-        self.executor, self.open_gate, self.compact = executor, open_gate, compact
+        self.executor, self.open_gate, self.compact, self.cleanup = executor, open_gate, compact, cleanup
         self.seq = 0
         self.started = time.monotonic()
         self.trace: list[str] = []
@@ -252,6 +252,7 @@ class _Run:
                     i = target
 
         await self.compact_session()
+        await self.cleanup_task(status)
         seconds = int(time.monotonic() - self.started)
         event("done", f"{self.ctx.key()}: {status} in {f'{seconds // 60} m' if seconds >= 60 else f'{seconds} s'}")
         return {"status": status, "reason": reason, "trace": self.trace}
@@ -274,19 +275,39 @@ class _Run:
             event("compact", f"failed: {r['error']}")
 
 
-def make_app(executor: Callable, open_gate: Callable = spawn_gate, compact: Callable | None = None):
+    async def cleanup_task(self, status: str) -> None:
+        """After compaction: the harness writes result.md and removes the task's temporary files."""
+        if self.cleanup is None:
+            return
+        module, task_id, dag, trace = self.ctx.key(), self.req.get("task_id", ""), self.req["dag"], list(self.trace)
+
+        async def act() -> dict:
+            try:
+                await self._in_thread(self.cleanup, module, task_id, dag, status, trace)
+                return {"ok": True}
+            except Exception as e:  # logged, never raised
+                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+        r = await self.ctx.run_typed("cleanup", act)
+        if not r["ok"]:
+            event("cleanup", f"{module}: failed: {r['error']}")
+
+
+def make_app(executor: Callable, open_gate: Callable = spawn_gate, compact: Callable | None = None,
+             cleanup: Callable | None = None):
     """Build the Restate app.
 
     executor(job) runs one node and returns {"ok": bool, "output": str}. job has module,
     task_id, task, node, action ("do" or "undo"), instruction and attempt.
     open_gate(gate_id, task, question[, choices, multi]) shows the popup; it gets choices and multi
     only when a node that the gate needs offered choices. compact(module) compacts the session.
+    cleanup(module, task_id, dag, status, trace) runs once after compact and removes temporary task files.
     """
     module = restate.VirtualObject("module")
 
     @module.handler(inactivity_timeout=timedelta(hours=2), abort_timeout=timedelta(hours=2))
     async def run(ctx: restate.ObjectContext, req: dict) -> dict:
-        return await _Run(ctx, req, executor, open_gate, compact).go()
+        return await _Run(ctx, req, executor, open_gate, compact, cleanup).go()
 
     @module.handler(kind="shared")
     async def status(ctx: restate.ObjectSharedContext) -> dict:
@@ -296,9 +317,10 @@ def make_app(executor: Callable, open_gate: Callable = spawn_gate, compact: Call
     return restate.app([module])
 
 
-def serve(executor: Callable, open_gate: Callable = spawn_gate, compact: Callable | None = None, port: int = 9080):
+def serve(executor: Callable, open_gate: Callable = spawn_gate, compact: Callable | None = None,
+          cleanup: Callable | None = None, port: int = 9080):
     """Serve the engine for a Restate server to call. Runs until SIGINT or SIGTERM."""
-    asyncio.run(restate.serve(make_app(executor, open_gate, compact), host="127.0.0.1", port=port))
+    asyncio.run(restate.serve(make_app(executor, open_gate, compact, cleanup), host="127.0.0.1", port=port))
 
 
 def _http(method: str, url: str, body: object = None, timeout: float = 30):

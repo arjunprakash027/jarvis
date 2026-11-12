@@ -101,3 +101,12 @@ def test_parse_dag_returns_dag_and_raises_all_errors():
     with pytest.raises(DagError) as e:
         parse_dag(json.dumps(d), ["confirm"])
     assert len(e.value.errors) == 2
+
+
+def test_keep_accepts_relative_paths():
+    assert check_dag(dag(keep=["out/report.csv", "notes.txt"])) == []
+
+
+@pytest.mark.parametrize("keep", [["/etc/passwd"], ["../x"], ["a/../../x"], "tmp", [1], ["~/x"]])
+def test_keep_rejects_bad_values(keep):
+    assert any("keep" in e for e in check_dag(dag(keep=keep)))

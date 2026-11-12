@@ -31,6 +31,15 @@ def check_dag(dag: object, required_gates: Iterable[str] = ()) -> list[str]:
         errors.append("'nodes' must be a non-empty list.")
         return errors
 
+    keep = dag.get("keep", [])
+    if not isinstance(keep, list) or not all(_text(k) for k in keep):
+        errors.append("'keep' must be a list of relative paths (strings).")
+    else:
+        for k in keep:
+            parts = k.replace("\\", "/").split("/")
+            if k.startswith(("/", "~")) or ".." in parts or (len(k) > 1 and k[1] == ":"):
+                errors.append(f"'keep' path '{k}' must be relative to the task folder, with no '..'.")
+
     ids: dict[str, dict] = {}
     for i, node in enumerate(nodes):
         where = f"node {i + 1}"

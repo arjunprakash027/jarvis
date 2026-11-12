@@ -66,6 +66,14 @@ When Arjun must pick from options, do not make him type. The step before the gat
 
 A gate that `needs` that step then shows a native list popup with these entries plus "Other…" (which opens the text box). Add `"multi": true` to the gate node to allow several picks. Cancel means no. The answer reaches the next node as the exact text, for example `Arjun answered yes: I Play Rocky, 19:30` (several picks are joined with a comma). Spoken or typed answers can name a choice by number ("2", "two") or by its name. Use choices only for real options; keep each string short and unique. A gate with no choices stays a Yes/No box with a text field.
 
+## Cleanup
+
+When a run ends (done, declined or stopped), after compaction, the engine writes `tasks/<id>/result.md` (status and one line for each node) and deletes `tasks/<id>/tmp/` and `tasks/<id>/nodes/`. Nothing outside the task folder is touched. `dag.json`, `spec.md`, `log.md`, `result.md` and built code in its target folder stay.
+
+- Put temporary files in `tasks/<id>/tmp/`.
+- The last node closes anything opened outside the folder (browser task space, temp files elsewhere).
+- List extra files to keep in an optional top-level `"keep": ["relative/path", ...]` in `dag.json`. Paths are relative to the task folder. Absolute paths and `..` are rejected by `jarvis dag check`.
+
 ## Result
 
 A run returns `{"status", "reason", "trace"}`. The status is `done`, `stopped`, `declined` or `invalid`.

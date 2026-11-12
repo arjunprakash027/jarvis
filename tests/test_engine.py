@@ -55,7 +55,10 @@ SERVICE = textwrap.dedent(
     def compact(module):
         log(kind="compact", module=module)
 
-    engine.serve(executor, open_gate, compact, port=int(os.environ["SERVICE_PORT"]))
+    def cleanup(module, task_id, dag, status, trace):
+        log(kind="cleanup", module=module, task_id=task_id, status=status)
+
+    engine.serve(executor, open_gate, compact, cleanup, port=int(os.environ["SERVICE_PORT"]))
     """
 )
 
@@ -405,3 +408,26 @@ def test_gate_without_choices_keeps_plain_arguments(stack):
 
 def test_gate_answer_keeps_exact_choice_case():
     assert engine.answer_text({"answer": "yes", "text": " I Play Rocky 19:30 "}) == "I Play Rocky 19:30"
+
+
+def test_cleanup_runs_once_after_compact_for_done_declined_and_stopped(stack):
+    # done
+    inv = stack.submit("m-clean-done", "clean-done", required_gates=["pay"])
+    stack.answer(stack.next_gate("clean-done"), "yes")
+    assert stack.result(inv)["status"] == "done"
+    # declined
+    inv = stack.submit("m-clean-no", "clean-no", required_gates=["pay"])
+    stack.answer(stack.next_gate("clean-no"), "no")
+    assert stack.result(inv)["status"] == "declined"
+    # stopped
+    stack.set_scenario({"clean-stop": {"basket": 99}})
+    inv = stack.submit("m-clean-stop", "clean-stop")
+    stack.answer(stack.next_gate("clean-stop"), "no", "stop")
+    assert stack.result(inv)["status"] == "stopped"
+    events = stack.events()
+    for module, task, status in [("m-clean-done", "clean-done", "done"), ("m-clean-no", "clean-no", "declined"),
+                                 ("m-clean-stop", "clean-stop", "stopped")]:
+        kinds = [e["kind"] for e in events if e.get("module") == module and e["kind"] in ("compact", "cleanup")]
+        assert kinds == ["compact", "cleanup"]
+        cleanup = next(e for e in events if e["kind"] == "cleanup" and e["module"] == module)
+        assert cleanup["task_id"] == task and cleanup["status"] == status

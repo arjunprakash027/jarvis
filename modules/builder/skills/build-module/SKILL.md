@@ -131,6 +131,14 @@ The build gets one ClickUp task. The list is `Jarvis Relay` (id `901617700405`, 
 - Check that the module loads: `uv run jarvis modules` lists it.
 - Commit with `git add modules/<name> && git commit -m "feat(<name>): <one line>"`. Never push.
 
+## Cleanup of task files
+
+When a run ends (done, declined or stopped), after compaction, the engine writes `tasks/<id>/result.md` (status and one line for each node) and deletes `tasks/<id>/tmp/` and `tasks/<id>/nodes/`. Nothing outside the task folder is touched. `dag.json`, `spec.md`, `log.md`, `result.md` and built code in its target folder stay.
+
+- Put temporary files in `tasks/<id>/tmp/`.
+- The last node closes anything opened outside the folder (browser task space, temp files elsewhere).
+- List extra files to keep in an optional top-level `"keep": ["relative/path", ...]` in `dag.json`. Paths are relative to the task folder. Absolute paths and `..` are rejected by `jarvis dag check`.
+
 ## 5. Mac facts found while exploring (clean-space)
 
 - `~/.Trash` cannot be read from a terminal (`Operation not permitted`). Count and size come from Finder: `osascript -e 'tell application "Finder" to get count of items of trash'` and `osascript -e 'tell application "Finder" to get physical size of every item of trash'` (sum the numbers, ignore `missing value`, say that the size is at least that).

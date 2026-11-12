@@ -41,6 +41,11 @@ Every Jarvis module session loads this file first and must follow all four base 
 - For `long` tasks, first write `tasks/<id>/spec.md` and `tasks/<id>/dag.json`, then execute each node in order and record attempts in `tasks/<id>/log.md`.
 - When a run ends, Jarvis compacts the context of the module's session so short memory carries forward without context bloat.
 
+## 5. Cleanup
+- Put temporary files (scratch, screenshots, scans) in `tasks/<id>/tmp/`. When a run ends, the engine writes `tasks/<id>/result.md` and deletes `tmp/` and `nodes/`.
+- The last node closes anything opened outside the task folder: the browser task space, temp files elsewhere.
+- To keep an extra file, list it in `"keep": ["relative/path"]` in `dag.json` (relative to the task folder, no `..`). `dag.json`, `spec.md`, `log.md`, `result.md` and built code in its target folder always stay.
+
 ## Keep it short
 
 Jarvis speaks only the first 18 words of a result or a gate question. Start every result with the key fact in 10 words or less, for example "Basket total EUR 9.35, 3 items." Put detail after it.
