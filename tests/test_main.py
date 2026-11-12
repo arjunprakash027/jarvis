@@ -230,3 +230,18 @@ def test_spoken_text_is_brief_but_screen_keeps_all(tmp_path, capsys):
     assert len(app.say.call_args.args[0].split()) == 18
     assert long in capsys.readouterr().out
     app.close()
+
+
+def test_accept_logs_jev_decision(tmp_path, capsys):
+    from jarvis.router import Judgments
+    j = Judgments(module_probs={"example": 0.9, "other": 0.1}, fits=0.95, detail=0.88, long=0.1)
+    route = Mock(return_value=Route(module="example", score=0.9, judgments=j))
+    app, module, _ = app_for(tmp_path, route=route)
+    app.accept("buy something")
+    captured = capsys.readouterr().out
+    assert "jev" in captured
+    assert "example: 0.90" in captured
+    assert "fits: 0.95" in captured
+    assert "detail: 0.88" in captured
+    app.close()
+

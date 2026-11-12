@@ -123,6 +123,8 @@ class Jarvis:
         self.add_new_modules()
         request = f"{self.pending}\n{text}" if self.pending else text
         decision = self.route(request, {m.name: m.description for m in self.modules.values()})
+        if getattr(decision, "judgments", None):
+            event("jev", decision.judgments.summary())
         if decision.module is None:
             event("route", f"{decision.kind}: asking \"{decision.question}\"")
             self.pending = "" if decision.kind == "no_fit" else request
