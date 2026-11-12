@@ -9,6 +9,50 @@ You are the builder session. You build in two steps inside this one session: the
 
 Read first: `modules/_base/CLAUDE.md`, `docs/module-contract.md`, `docs/dag-format.md`, `modules/_example/`, and the sample in `skills/build-module/examples/`.
 
+## Destination and use
+
+If the request does not say where the module goes, ask: “Where should I put it? Default: `modules/<name>/` in this repository.” Return planning `ok: false` with that question instead of inventing an answer or writing code. The next request can confirm the default. Never silently choose an external project or overwrite an existing module. If the request already gives its target, use it after checking the folder belongs to this repo and is safe to change.
+
+The caller runs `uv run jarvis up --text` (or voice `uv run jarvis up`) at the repo root, requests the build, approves the plan, and then requests the new module by its description. Jarvis reloads modules before routing each new request; no restart is needed on the current harness. Each new module gets one named session `jarvis-<name>`; never start that session yourself. To inspect the result, use `uv run jarvis modules` and `uv run jarvis dag check modules/<name>/tasks/<id>/dag.json`.
+
+## Complete module recipe
+
+All of this belongs in the generated module; global skills are disabled by the harness. Never assume another session’s skills are present. If a tool is needed, document exact CLI commands locally in its skill; for a browser use only ego CLI and include navigation, inspection and confirmation instructions without machine-specific paths or secrets. Missing tools/permissions are reported, never bypassed.
+
+```text
+modules/<name>/
+  module.toml
+  CLAUDE.md
+  skills/<skill-name>/SKILL.md
+  extensions/.gitkeep
+  tasks/<id>/dag.json     # runtime only, ignored
+  tasks/<id>/log.md       # runtime only, ignored
+  tasks/<id>/spec.md      # long tasks only, ignored
+```
+
+Use exactly these eight settings (replace the name and description):
+
+```toml
+name = "my-module"
+description = "One clear task this module performs"
+agent = "pi"
+model = "openai/gpt-6.1-sol"
+directory = "modules/my-module"
+task_size = "short"
+required_gates = ["confirm"]
+mcp_servers = []
+```
+
+Use `long` for a build needing a spec. The description is the router’s interface: distinguish the new task from building a new tool. MCP names do not magically configure a missing integration. CLAUDE.md explains the module, safe boundaries and file map; SKILL.md has YAML `name`/`description` and the complete commands, planning/execution procedure, tests and undo. Extensions are optional `.ts`/`.js` files; prefer a small skill over new code unless needed.
+
+A task DAG is a JSON object with nonempty `task` and `nodes`. Each node needs unique `id`, `type` (`step`, `test`, `gate`), nonempty `do`, and `needs` (ids, `[]` at the start). `needs` must reference existing nodes and be acyclic. Put all prerequisites before dependents. At least one test is mandatory. Optional `on_fail` belongs only to a test and points to an earlier ancestor. Every configured required gate must be a gate node **and a dependency of the action it protects**; merely listing it is not sufficient protection. Gate text identifies the task and exact proposed action. The engine pauses, shows/speaks it and waits; never ask the session to approve itself.
+
+Use small DAGs: inspect -> show -> confirm gate -> action with undo -> test. Write plans before execution. Freeze the action scope before confirmation. `undo` on a mutating step must reverse only that step’s own changes from a recorded baseline, never unrelated files. Failed tests trigger reverse-order undo and return to `on_fail`; repeated failures ask retry/skip/stop. A failed step gets one retry before recovery. If undo cannot finish safely, report the conflict and stop, not another destructive pass. A no at a gate stops; do not treat it as approval. Verify repeated attempts cannot duplicate external changes.
+
+Test the exact generated instructions, not a substitute: module loader and exact TOML keys; real `check_dag` including missing-gate/missing-test rejection; real read-only inspection; isolated fixture mutation/undo; declined gate leaves user data untouched. A source review is not an execution test. Keep logs/inventories ignored and commit only intended code/docs. One task uses the harness-supplied task id and one existing session; the engine handles queuing and native compaction. Never launch helpers or subagents.
+
+Every result starts with the key fact in ten words or fewer. Spoken text is at most 18 words; put details in the ignored task log and normal terminal output. No secrets, tokens, personal documents, inventories, payment data, or machine-specific home paths in committed files. Prefer the smallest useful module, no feature flags, no speculative abstractions. Never push.
+
 ## 1. Planner step
 
 Run it when the request arrives. The engine has not started yet.
