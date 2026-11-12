@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "sounddevice>=0.5.6",
     "typesafe-sdk>=0.7.5",
+    "restate-sdk[serve]>=1.5.1",
 ]
 
 [project.scripts]
