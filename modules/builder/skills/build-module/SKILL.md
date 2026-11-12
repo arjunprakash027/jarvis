@@ -36,7 +36,7 @@ Use exactly these eight settings (replace the name and description):
 name = "my-module"
 description = "One clear task this module performs"
 agent = "pi"
-model = "openai/gpt-6.1-sol"
+model = "antigravity/gemini-4-argon"
 directory = "modules/my-module"
 task_size = "short"
 required_gates = ["confirm"]
@@ -118,7 +118,7 @@ The build gets one ClickUp task. The list is `Jarvis Relay` (id `901617700405`, 
 
 ## 4. Module checklist (when the target is a new module)
 
-- `modules/<name>/module.toml` has exactly these 8 keys: `name`, `description`, `agent`, `model`, `directory`, `task_size`, `required_gates`, `mcp_servers`. `agent = "pi"`. Set `directory = "modules/<name>"` relative to the repo root; the harness requires it to resolve to the new module folder. Use `model = "openai/gpt-6.1-sol"` unless the spec says otherwise. Never an Anthropic-billed Claude Code model. `description` is one plain line that the router reads.
+- `modules/<name>/module.toml` has exactly these 8 keys: `name`, `description`, `agent`, `model`, `directory`, `task_size`, `required_gates`, `mcp_servers`. `agent = "pi"`. Set `directory = "modules/<name>"` relative to the repo root; the harness requires it to resolve to the new module folder. Use `model = "antigravity/gemini-4-argon"` unless the spec says otherwise. Never an Anthropic-billed Claude Code model. `description` is one plain line that the router reads.
 - `modules/<name>/CLAUDE.md`: what the module is and what is in the folder.
 - `modules/<name>/skills/<skill-name>/SKILL.md`: how to do the task, with front matter `name` and `description`.
 - `modules/<name>/extensions/`: keep it, with a `.gitkeep` if empty.
