@@ -79,7 +79,9 @@ class Jarvis:
         print(f"You: {text}", flush=True)
         waiting = self.oldest_gate()
         if waiting:
-            answer = text.lower().strip(" .!?")
+            # The first word is the answer; the rest is detail, e.g. "yes, the 19:30 showing".
+            first, _, rest = text.lower().strip(" .!?").partition(" ")
+            answer, detail = first.strip(" ,.!?"), rest.strip(" ,.!?")
             if answer not in ("yes", "no", "retry", "skip", "stop", "undo"):
                 if waiting["id"] not in self.unclear:
                     self.unclear.add(waiting["id"])
@@ -87,8 +89,9 @@ class Jarvis:
                 else:
                     self.tell(f"{waiting['task']}: please answer in the popup.")
                 return None  # Never route an unclear gate answer as a new request.
+            word = "" if answer in ("yes", "no") else answer
             payload = {"answer": "yes" if answer in ("yes", "retry") else "no",
-                       "text": "" if answer in ("yes", "no") else answer}
+                       "text": " ".join(x for x in (word, detail) if x)}
             self.resolve(waiting["id"], payload)
             return None
         request = f"{self.pending}\n{text}" if self.pending else text

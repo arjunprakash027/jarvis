@@ -167,3 +167,11 @@ def test_modules_have_independent_queues(tmp_path):
     release.set()
     assert first.result(3)["status"] == queued.result(3)["status"] == "done"
     app.close()
+
+
+def test_gate_answer_keeps_detail_after_first_word(tmp_path):
+    app, _, _ = app_for(tmp_path, route=Mock())
+    app.status = lambda _: {"id": "gate9", "task": "movies", "question": "Which showing?"}
+    app.accept("Yes, the 19:30 showing.")
+    app.resolve.assert_called_once_with("gate9", {"answer": "yes", "text": "the 19:30 showing"})
+    app.close()
