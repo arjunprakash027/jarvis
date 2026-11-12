@@ -5,6 +5,8 @@ description: Choose Cineworld Dublin showings and two seats with ego-browser, st
 
 # Cineworld Dublin
 
+Start each node's result output with its key fact in 10 words or fewer, for example `Two seats C6/C7, total EUR 35.98, not booked.` Jarvis speaks at most 18 words. Put film, date/time, ticket types, exact counts, fee, expiry and other evidence after that first sentence so the engine can forward the complete result to the next node/gate. Do not omit a failure or pending Calendar status for brevity.
+
 Load the installed ego-browser skill and run `ego-browser skill` before browser work. One TaskSpace per run; reuse it. Follow current snapshots, not old refs. Use observable waits after every selection: DOM updates are asynchronous and immediate second clicks can be lost.
 
 ## Observed path (12 November 2026)
