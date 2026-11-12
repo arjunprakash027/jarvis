@@ -14,7 +14,7 @@ A Jarvis module `clean-space` that finds disk space Arjun can free, shows it, as
 
 | File | What it does |
 | --- | --- |
-| `module.toml` | Name, one-line router description, `agent = "pi"`, model `antigravity/gemini-4-argon`, `directory = "modules/clean-space"`, `task_size = "short"`, `required_gates = ["confirm-trash"]`, `mcp_servers = []`. |
+| `module.toml` | Name, one-line router description, `agent = "pi"`, model `antigravity/gemini-3-8-flash:high`, `directory = "modules/clean-space"`, `task_size = "short"`, `required_gates = ["confirm-trash"]`, `mcp_servers = []`. |
 | `CLAUDE.md` | What the module is, the Trash-only rule, the folder map. |
 | `skills/clean-space/SKILL.md` | How to scan, how to write the DAG, how to trash. |
 | `extensions/.gitkeep` | Keeps the folder. |
