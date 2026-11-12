@@ -14,7 +14,7 @@ from pathlib import Path
 from . import engine, gate, router, voice
 from .dag import check_dag
 from .harness import Harness
-from .modules import load_modules
+from .modules import ModuleConfigError, load_modules
 
 
 def http(method: str, url: str, body=None):
@@ -28,7 +28,8 @@ def http(method: str, url: str, body=None):
 class Jarvis:
     def __init__(self, modules, harness, *, route=router.route, say=voice.speak,
                  submit=engine.submit, result=engine.result, resolve=gate.resolve_gate,
-                 status=None, popup=gate.spawn_gate):
+                 status=None, popup=gate.spawn_gate, reload=None):
+        self.reload = reload  # returns the current modules; a new module works with no restart
         self.modules = {m.name: m for m in modules}
         self.harness, self.route, self.say = harness, route, say
         self.submit, self.result, self.resolve = submit, result, resolve
@@ -42,13 +43,30 @@ class Jarvis:
         self.pools = {m.name: ThreadPoolExecutor(max_workers=1) for m in modules}
         self.futures = []
 
+    def add_new_modules(self):
+        """Pick up module folders added since start, for example one the builder just made."""
+        if self.reload is None:
+            return
+        try:
+            current = self.reload()
+        except ModuleConfigError as exc:  # a half-built module must not stop Jarvis
+            print(f"Module list not reloaded: {exc}", flush=True)
+            return
+        for m in current:
+            if m.name not in self.modules:
+                self.modules[m.name] = m
+                self.module_locks[m.name] = threading.Lock()
+                self.pools[m.name] = ThreadPoolExecutor(max_workers=1)
+                self.harness.add(m)
+                print(f"New module: {m.name}", flush=True)
+
     def close(self):
         for pool in self.pools.values():
             pool.shutdown(wait=True)
 
     def tell(self, text):
-        print(text, flush=True)
-        self.say(text)
+        print(text, flush=True)  # the full text stays on screen
+        self.say(gate.brief(text))
 
     def _status(self, name):
         return http("POST", f"{gate.ingress_url()}/module/{urllib.parse.quote(name, safe='')}/status")
@@ -79,7 +97,9 @@ class Jarvis:
         print(f"You: {text}", flush=True)
         waiting = self.oldest_gate()
         if waiting:
-            answer = text.lower().strip(" .!?")
+            # The first word is the answer; the rest is detail, e.g. "yes, the 19:30 showing".
+            first, _, rest = text.lower().strip(" .!?").partition(" ")
+            answer, detail = first.strip(" ,.!?"), rest.strip(" ,.!?")
             if answer not in ("yes", "no", "retry", "skip", "stop", "undo"):
                 if waiting["id"] not in self.unclear:
                     self.unclear.add(waiting["id"])
@@ -87,10 +107,12 @@ class Jarvis:
                 else:
                     self.tell(f"{waiting['task']}: please answer in the popup.")
                 return None  # Never route an unclear gate answer as a new request.
+            word = "" if answer in ("yes", "no") else answer
             payload = {"answer": "yes" if answer in ("yes", "retry") else "no",
-                       "text": "" if answer in ("yes", "no") else answer}
+                       "text": " ".join(x for x in (word, detail) if x)}
             self.resolve(waiting["id"], payload)
             return None
+        self.add_new_modules()
         request = f"{self.pending}\n{text}" if self.pending else text
         decision = self.route(request, {m.name: m.description for m in self.modules.values()})
         if decision.module is None:
@@ -187,7 +209,7 @@ def up(modules_dir: Path, *, text: bool = False) -> int:
     modules = load_modules(modules_dir)
     if not modules:
         raise ValueError("No modules found. Copy modules/_example to a non-underscore folder first.")
-    app = Jarvis(modules, Harness(modules))
+    app = Jarvis(modules, Harness(modules), reload=lambda: load_modules(modules_dir))
     start_services(app)
     if not text:
         fixture = Path(__file__).resolve().parents[2] / "tests/fixtures/request.wav"

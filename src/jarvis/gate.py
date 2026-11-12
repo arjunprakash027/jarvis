@@ -68,8 +68,17 @@ def ask_popup(gate_id: str, task: str, question: str) -> dict | None:
     return {"answer": button.lower(), "text": text}
 
 
+SPOKEN_WORDS = 18  # Arjun: what Jarvis says must be very short; the popup shows the full text
+
+
+def brief(text: str, words: int = SPOKEN_WORDS) -> str:
+    """The short form that Jarvis speaks: at most `words` words."""
+    parts = text.split()
+    return " ".join(parts[:words]) if len(parts) > words else text
+
+
 def speak(task: str, question: str) -> None:
-    subprocess.run(["say", f"{task}. {question}"], check=False)
+    subprocess.run(["say", brief(f"{task}. {question}")], check=False)
 
 
 def open_gate(

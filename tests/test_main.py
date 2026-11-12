@@ -167,3 +167,31 @@ def test_modules_have_independent_queues(tmp_path):
     release.set()
     assert first.result(3)["status"] == queued.result(3)["status"] == "done"
     app.close()
+
+
+def test_gate_answer_keeps_detail_after_first_word(tmp_path):
+    app, _, _ = app_for(tmp_path, route=Mock())
+    app.status = lambda _: {"id": "gate9", "task": "movies", "question": "Which showing?"}
+    app.accept("Yes, the 19:30 showing.")
+    app.resolve.assert_called_once_with("gate9", {"answer": "yes", "text": "the 19:30 showing"})
+    app.close()
+
+
+def test_new_module_folder_is_picked_up_without_restart(tmp_path):
+    app, module, harness = app_for(tmp_path, route=Mock(return_value=Route(kind="no_fit", question="No module fits.")))
+    new = Mock(); new.name = "clean-space"; new.description = "Free disk space"
+    app.reload = lambda: [module, new]
+    app.accept("clean my space")
+    assert "clean-space" in app.modules and "clean-space" in app.pools
+    harness.add.assert_called_once_with(new)
+    assert "clean-space" in app.route.call_args.args[1]
+    app.close()
+
+
+def test_spoken_text_is_brief_but_screen_keeps_all(tmp_path, capsys):
+    app, _, _ = app_for(tmp_path, route=Mock())
+    long = " ".join(f"w{i}" for i in range(40))
+    app.tell(long)
+    assert len(app.say.call_args.args[0].split()) == 18
+    assert long in capsys.readouterr().out
+    app.close()
