@@ -27,6 +27,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override the modules directory path.",
     )
+    up_parser = subparsers.add_parser("up", help="Listen, route and run module tasks.")
+    up_parser.add_argument("--text", action="store_true", help="Read typed lines instead of the microphone.")
+    up_parser.add_argument("--modules-dir", type=Path, default=None)
+    dag_parser = subparsers.add_parser("dag", help="Check a task DAG.")
+    dag_commands = dag_parser.add_subparsers(dest="dag_command", required=True)
+    check_parser = dag_commands.add_parser("check", help="Validate dag.json.")
+    check_parser.add_argument("path", type=Path)
     return parser
 
 
@@ -60,6 +67,26 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "modules":
         return cmd_modules(_resolve_modules_dir(args.modules_dir))
+
+    if args.command == "dag":
+        import json
+        from jarvis.dag import check_dag
+
+        try:
+            errors = check_dag(json.loads(args.path.read_text()))
+        except (OSError, ValueError) as exc:
+            errors = [str(exc)]
+        print("\n".join(errors) if errors else "OK")
+        return 1 if errors else 0
+
+    if args.command == "up":
+        from jarvis.main import up
+
+        try:
+            return up(_resolve_modules_dir(args.modules_dir), text=args.text)
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
 
     return 1
 
