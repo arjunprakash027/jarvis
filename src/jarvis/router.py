@@ -1,6 +1,6 @@
 """Router: Jev (TypeSafe) makes four judgments, a small table in code decides the route."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 
 from typesafe_sdk import Choice, Noul, TypeSafeClient
@@ -30,6 +30,7 @@ class Route:
     kind: str | None = None
     question: str | None = None
     long_task: bool = False
+    score: float = field(default=0.0, compare=False)  # top module probability, for the live log
 
 
 def build_state(request: str, modules: dict[str, str]) -> dict:
@@ -51,7 +52,7 @@ def decide(j: Judgments) -> Route:
     # Detail missing or unsettled: ask for it.
     if j.detail < YES:
         return Route(kind="detail", question=q.ASK_DETAIL)
-    return Route(module=top, long_task=j.long >= YES)
+    return Route(module=top, long_task=j.long >= YES, score=top_p)
 
 
 def _api_key() -> str | None:

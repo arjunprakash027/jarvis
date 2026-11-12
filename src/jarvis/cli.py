@@ -30,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     up_parser = subparsers.add_parser("up", help="Listen, route and run module tasks.")
     up_parser.add_argument("--text", action="store_true", help="Read typed lines instead of the microphone.")
     up_parser.add_argument("--modules-dir", type=Path, default=None)
+    subparsers.add_parser("logs", help="Show the last 50 log lines and follow new ones (Ctrl-C to stop).")
     dag_parser = subparsers.add_parser("dag", help="Check a task DAG.")
     dag_commands = dag_parser.add_subparsers(dest="dag_command", required=True)
     check_parser = dag_commands.add_parser("check", help="Validate dag.json.")
@@ -67,6 +68,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "modules":
         return cmd_modules(_resolve_modules_dir(args.modules_dir))
+
+    if args.command == "logs":
+        from jarvis.log import follow
+
+        try:
+            follow()
+        except KeyboardInterrupt:
+            pass
+        return 0
 
     if args.command == "dag":
         import json

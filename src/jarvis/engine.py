@@ -9,6 +9,7 @@ See docs/restate.md and docs/dag-format.md.
 import asyncio
 import inspect
 import json
+import time
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
@@ -17,6 +18,7 @@ from datetime import timedelta
 import restate
 
 from .dag import check_dag, topological_order
+from .log import event, headline
 from .gate import ingress_url, resolve_gate, spawn_gate
 
 __all__ = ["make_app", "serve", "register", "submit", "result", "resolve_gate"]
@@ -55,6 +57,7 @@ class _Run:
         self.ctx, self.req = ctx, req
         self.executor, self.open_gate, self.compact = executor, open_gate, compact
         self.seq = 0
+        self.started = time.monotonic()
         self.trace: list[str] = []
         self.outputs: dict[str, str] = {}  # node id -> its last output (a gate's output is Arjun's answer)
         self.choices: dict[str, list[str]] = {}  # node id -> the choices its result offered
@@ -90,15 +93,20 @@ class _Run:
         }
 
         async def act() -> dict:
+            what = "undo" if action == "undo" else f"running (try {attempt})" if attempt > 1 else "running"
+            event("node", f"{node['id']}: {what}")
             try:
                 r = await self._in_thread(self.executor, job)
             except Exception as e:  # Restate would retry an error forever
-                return {"ok": False, "output": f"{type(e).__name__}: {e}", "choices": []}
+                r = {"ok": False, "output": f"{type(e).__name__}: {e}", "choices": []}
             if isinstance(r, dict):
                 found = r.get("choices")
                 found = [str(c) for c in found if str(c).strip()] if isinstance(found, list) else []
-                return {"ok": bool(r.get("ok")), "output": str(r.get("output", "")), "choices": found}
-            return {"ok": bool(r), "output": "", "choices": []}
+                r = {"ok": bool(r.get("ok")), "output": str(r.get("output", "")), "choices": found}
+            else:
+                r = {"ok": bool(r), "output": "", "choices": []}
+            event("node", f"{node['id']}: {'ok' if r['ok'] else 'failed'} · \"{headline(r['output'])}\"")
+            return r
 
         r = await self.ctx.run_typed(f"{action}:{node['id']}#{self.seq}", act)
         return r["ok"], r["output"], r["choices"]
@@ -115,6 +123,7 @@ class _Run:
 
         async def open_it() -> dict:
             # Without choices the opener gets the three old arguments.
+            event("gate", f"{node_id}: waiting for you")
             await self._in_thread(self.open_gate, gate_id, task, question, *((choices, multi) if choices else ()))
             return {"opened": True}
 
@@ -131,6 +140,7 @@ class _Run:
             "Yes means try again. No means stop.",
         )
         choice = _choice(reply)
+        event("gate", f"{node_id}: {choice}")
         self.note(node_id, f"gate answer: {choice}")
         return choice
 
@@ -163,6 +173,8 @@ class _Run:
             for attempt in (1, 2):
                 ok, out = await self.call(node, "do", attempt)
                 self.note(node["id"], "ok" if ok else f"failed (try {attempt})")
+                if not ok and attempt == 1:
+                    event("node", f"{node['id']}: retrying")
                 if ok:
                     self.outputs[node["id"]] = out
                     return "ok"
@@ -188,6 +200,7 @@ class _Run:
             if kind == "gate":
                 reply = await self.ask(node["id"], self.gate_question(node), self.gate_choices(node), bool(node.get("multi")))
                 yes, text = parse_answer(reply)
+                event("gate", f"{node['id']}: {'yes' if yes else 'no'}" + (f" ({shown_text})" if (shown_text := answer_text(reply)) else ""))
                 self.note(node["id"], "gate yes" if yes else "gate no")
                 shown = answer_text(reply)  # keep the exact choice, with its case
                 self.outputs[node["id"]] = f"Arjun answered {'yes' if yes else 'no'}" + (f": {shown}" if shown else "")
@@ -220,6 +233,7 @@ class _Run:
                 if target is not None and returns.get(node["id"], 0) < MAX_RETURNS:
                     returns[node["id"]] = returns.get(node["id"], 0) + 1
                     await self.undo(order[target:i], byid, done)
+                    event("node", f"{node['id']}: failed, returning to {node['on_fail']}")
                     self.note(node["id"], f"return to {node['on_fail']}")
                     i = target
                     continue
@@ -238,6 +252,8 @@ class _Run:
                     i = target
 
         await self.compact_session()
+        seconds = int(time.monotonic() - self.started)
+        event("done", f"{self.ctx.key()}: {status} in {f'{seconds // 60} m' if seconds >= 60 else f'{seconds} s'}")
         return {"status": status, "reason": reason, "trace": self.trace}
 
     async def compact_session(self) -> None:
@@ -254,6 +270,8 @@ class _Run:
 
         r = await self.ctx.run_typed("compact", act)
         self.note("compact", "ok" if r["ok"] else f"failed: {r['error']}")
+        if not r["ok"]:
+            event("compact", f"failed: {r['error']}")
 
 
 def make_app(executor: Callable, open_gate: Callable = spawn_gate, compact: Callable | None = None):
