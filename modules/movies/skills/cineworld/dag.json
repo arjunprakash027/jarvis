@@ -10,7 +10,7 @@
     {
       "id": "choose_showing",
       "type": "gate",
-      "do": "Cineworld Dublin: choose one of the live Saturday film/time options from find_showings. Confirm two standard Adult tickets or state ticket types, and whether to add one tentative Google Calendar hold marked not booked.",
+      "do": "Cineworld Dublin: choose one of the live Saturday film/time options from find_showings. Two standard Adult tickets are the default unless you state a different type. Choose a film and time; if that film has only one offered time, its name suffices.",
       "needs": [
         "find_showings"
       ]
@@ -18,7 +18,7 @@
     {
       "id": "select_seats",
       "type": "step",
-      "do": "Read choose_showing answer; stop if ambiguous, cancelled or no ticket-type confirmation. Follow approved guest path; stop for credentials/personal data/human verification. Select exactly two adjacent available normal seats for that showing, wait after each click. Select two approved tickets on /tickets and record live seats, quantities, total and expiry. Stop on this ticket-summary page; never click Your details.",
+      "do": "Read choose_showing answer; stop if film/time is ambiguous or cancelled. Default two unspecified tickets to two standard Adults per approved skill; no separate ticket-type confirmation is required. Follow approved guest path; stop for credentials/personal data/human verification. Select exactly two adjacent available normal seats for that showing, wait after each click. Select two approved tickets on /tickets and record live seats, quantities, total and expiry. Stop on this ticket-summary page; never click Your details.",
       "needs": [
         "choose_showing"
       ],
@@ -27,7 +27,7 @@
     {
       "id": "verify_seats",
       "type": "test",
-      "do": "Verify live ticket summary: correct Dublin film/date/time, exactly two selected seats, two gate-approved tickets, 2 of 2, live total and booking fee. Check hold not expired and no details/payment page opened. Record evidence. Fail on mismatch; do not report success from intended clicks alone.",
+      "do": "Verify live ticket summary: correct Dublin film/date/time, exactly two selected seats, two requested tickets (standard Adults by default), 2 of 2, live total and booking fee. Check hold not expired and no details/payment page opened. Record evidence. Fail on mismatch; do not report success from intended clicks alone.",
       "needs": [
         "select_seats"
       ],
@@ -36,7 +36,7 @@
     {
       "id": "before_payment",
       "type": "gate",
-      "do": "Cineworld Dublin: review the verified film/time, two seats, ticket types and actual total from verify_seats. End the demo here, stopped before payment? No tickets are booked. Yes never authorizes Your details, payment or card entry; no also must not advance the browser.",
+      "do": "Cineworld Dublin: review the verified film/time, two seats, ticket types and actual total from verify_seats. End browser work here, stopped before payment, and add one tentative Google Calendar hold marked not booked? No tickets are booked. Yes never authorizes Your details, payment or card entry; no also must not advance the browser.",
       "needs": [
         "verify_seats"
       ]
@@ -44,7 +44,7 @@
     {
       "id": "calendar",
       "type": "step",
-      "do": "End browser work without advancing beyond the ticket summary. If choose_showing authorized it, use pi Composio tools (composio_search, composio_get_schema, composio_execute) to ensure exactly one tentative event for the selected showing, real Europe/Dublin start and runtime-based end, marked not booked. Check for existing event before create, record returned ID and read it back. If googlecalendar is not connected, report the Composio connect link for Arjun and mark Calendar pending, never invent success. Set no Meet link, no attendees, no organizer attendee and send_updates none. Report stopped before payment, no tickets booked.",
+      "do": "End browser work without advancing beyond the ticket summary. If choose_showing or before_payment explicitly authorized the tentative Calendar hold, use pi Composio tools (composio_search, composio_get_schema, composio_execute) to ensure exactly one tentative event for the selected showing, real Europe/Dublin start and runtime-based end, marked not booked. Check for existing event before create, record returned ID and read it back. If googlecalendar is not connected, report the Composio connect link for Arjun and mark Calendar pending, never invent success. Set no Meet link, no attendees, no organizer attendee and send_updates none. Report stopped before payment, no tickets booked.",
       "needs": [
         "before_payment"
       ]
