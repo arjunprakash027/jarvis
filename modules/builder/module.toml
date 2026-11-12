@@ -1,7 +1,7 @@
 name = "builder"
 description = "Build a new tool or a new Jarvis module"
 agent = "pi"
-model = "antigravity/claude-sonnet-5-5"
+model = "openai/gpt-6.1-sol"
 directory = "."
 task_size = "long"
 required_gates = ["approve-plan"]
