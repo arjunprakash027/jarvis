@@ -40,3 +40,7 @@ Every Jarvis module session loads this file first and must follow all four base 
 - For `short` tasks, write `tasks/<id>/dag.json` and execute each node as the engine dispatches it.
 - For `long` tasks, first write `tasks/<id>/spec.md` and `tasks/<id>/dag.json`, then execute each node in order and record attempts in `tasks/<id>/log.md`.
 - When a run ends, Jarvis compacts the context of the module's session so short memory carries forward without context bloat.
+
+## Keep it short
+
+Jarvis speaks only the first 18 words of a result or a gate question. Start every result with the key fact in 10 words or less, for example "Basket total EUR 9.35, 3 items." Put detail after it.
