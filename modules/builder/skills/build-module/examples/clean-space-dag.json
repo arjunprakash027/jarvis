@@ -1,0 +1,23 @@
+{
+  "task": "Build a Jarvis module that cleans the Mac's disk space",
+  "nodes": [
+    {"id": "clickup-open", "type": "step", "needs": [],
+     "do": "Search ClickUp for 'clean-space'. If no task 'Jarvis build: clean-space' exists, create it in the list Jarvis Relay. Add the tag in-progress and comment the spec path. Write the task id in log.md.",
+     "undo": "Comment on the ClickUp task that the build was rolled back and remove the tag in-progress."},
+    {"id": "approve-plan", "type": "gate", "needs": ["clickup-open"],
+     "do": "Builder: the spec for the module clean-space is ready. It scans caches, old Downloads and the Trash, asks you, then moves files to the Trash. Do I build it?"},
+    {"id": "scaffold", "type": "step", "needs": ["approve-plan"],
+     "do": "Create modules/clean-space/ with module.toml (8 keys, required_gates = [\"confirm-trash\"]), CLAUDE.md and extensions/.gitkeep, as in the spec.",
+     "undo": "Move modules/clean-space to the Trash with trash. Do not use rm."},
+    {"id": "skill", "type": "step", "needs": ["scaffold"],
+     "do": "Write modules/clean-space/skills/clean-space/SKILL.md: the scan commands, the DAG the session must write for each run (scan, show, gate confirm-trash, trash, verify), the Trash-only rule and the Finder undo that moves the items back."},
+    {"id": "test-load", "type": "test", "needs": ["skill"], "on_fail": "scaffold",
+     "do": "Run uv run jarvis modules and confirm clean-space is listed. Check that the sample DAG in the new skill passes check_dag with the required gate confirm-trash."},
+    {"id": "test-trash", "type": "test", "needs": ["test-load"], "on_fail": "skill",
+     "do": "Create a throwaway file under /tmp, move it with the trash command from the new skill, and confirm it is gone from /tmp and listed in the Trash by Finder. Then restore it with the undo command from the skill, confirm it is back in /tmp, and move it to the Trash again. Also run the scan once and confirm it prints caches, Downloads and Trash and changes nothing."},
+    {"id": "commit", "type": "step", "needs": ["test-trash"],
+     "do": "Run git add modules/clean-space and commit it on the current branch with the message 'feat(clean-space): disk clean module'. Do not push."},
+    {"id": "clickup-close", "type": "step", "needs": ["commit"],
+     "do": "Comment the files built, the test results and the commit hash on the ClickUp task. Mark it complete and remove the tag in-progress."}
+  ]
+}
