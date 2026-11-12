@@ -1,0 +1,8 @@
+name = "sys-widget"
+description = "Show current RAM and SSD space consumed in a taskbar or tooltip widget"
+agent = "pi"
+model = "antigravity/gemini-3-8-flash:high"
+directory = "modules/sys-widget"
+task_size = "short"
+required_gates = []
+mcp_servers = []
