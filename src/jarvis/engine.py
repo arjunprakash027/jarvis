@@ -34,6 +34,11 @@ def parse_answer(answer: object) -> tuple[bool, str]:
     return word.strip().lower() in YES, text.strip().lower()
 
 
+def answer_text(answer: object) -> str:
+    """The text of a gate answer as given (parse_answer lowercases it)."""
+    return str(answer.get("text", "")).strip() if isinstance(answer, dict) else ""
+
+
 def _choice(answer: object) -> str:
     """Read a try again / skip / stop answer. An unclear answer means stop."""
     yes, text = parse_answer(answer)
@@ -52,6 +57,7 @@ class _Run:
         self.seq = 0
         self.trace: list[str] = []
         self.outputs: dict[str, str] = {}  # node id -> its last output (a gate's output is Arjun's answer)
+        self.choices: dict[str, list[str]] = {}  # node id -> the choices its result offered
 
     def note(self, node_id: str, event: str) -> None:
         self.trace.append(f"{node_id}: {event}")
@@ -63,6 +69,14 @@ class _Run:
         return await asyncio.to_thread(fn, *args)
 
     async def call(self, node: dict, action: str, attempt: int) -> tuple[bool, str]:
+        ok, out, choices = await self.call_full(node, action, attempt)
+        if ok and action == "do":
+            self.choices.pop(node["id"], None)
+            if choices:
+                self.choices[node["id"]] = choices
+        return ok, out
+
+    async def call_full(self, node: dict, action: str, attempt: int) -> tuple[bool, str, list[str]]:
         """One stored executor call. The executor never raises out of the stored step."""
         self.seq += 1
         job = {
@@ -79,23 +93,29 @@ class _Run:
             try:
                 r = await self._in_thread(self.executor, job)
             except Exception as e:  # Restate would retry an error forever
-                return {"ok": False, "output": f"{type(e).__name__}: {e}"}
+                return {"ok": False, "output": f"{type(e).__name__}: {e}", "choices": []}
             if isinstance(r, dict):
-                return {"ok": bool(r.get("ok")), "output": str(r.get("output", ""))}
-            return {"ok": bool(r), "output": ""}
+                found = r.get("choices")
+                found = [str(c) for c in found if str(c).strip()] if isinstance(found, list) else []
+                return {"ok": bool(r.get("ok")), "output": str(r.get("output", "")), "choices": found}
+            return {"ok": bool(r), "output": "", "choices": []}
 
         r = await self.ctx.run_typed(f"{action}:{node['id']}#{self.seq}", act)
-        return r["ok"], r["output"]
+        return r["ok"], r["output"], r["choices"]
 
-    async def ask(self, node_id: str, question: str) -> object:
+    async def ask(self, node_id: str, question: str, choices: list[str] | None = None, multi: bool = False) -> object:
         """Open a gate and sleep until its id is answered."""
         self.seq += 1
         task = self.req["dag"]["task"]
         gate_id, answer = self.ctx.awakeable()
-        self.ctx.set("gate", {"id": gate_id, "node": node_id, "task": task, "question": question})
+        state = {"id": gate_id, "node": node_id, "task": task, "question": question}
+        if choices:
+            state.update(choices=choices, multi=multi)
+        self.ctx.set("gate", state)
 
         async def open_it() -> dict:
-            await self._in_thread(self.open_gate, gate_id, task, question)
+            # Without choices the opener gets the three old arguments.
+            await self._in_thread(self.open_gate, gate_id, task, question, *((choices, multi) if choices else ()))
             return {"opened": True}
 
         await self.ctx.run_typed(f"gate:{node_id}#{self.seq}", open_it)
@@ -132,6 +152,10 @@ class _Run:
         found = [self.outputs[n].strip()[:300] for n in node.get("needs", []) if self.outputs.get(n, "").strip()]
         return " ".join([node["do"], *found]) if found else node["do"]
 
+    def gate_choices(self, node: dict) -> list[str]:
+        """The choices of the first needed node that offered some."""
+        return next((self.choices[n] for n in node.get("needs", []) if self.choices.get(n)), [])
+
     async def work(self, node: dict) -> str:
         """Run a step. One retry, then ask. Return ok, skip or stop."""
         while True:
@@ -162,9 +186,11 @@ class _Run:
             kind = node["type"]
 
             if kind == "gate":
-                yes, text = parse_answer(await self.ask(node["id"], self.gate_question(node)))
+                reply = await self.ask(node["id"], self.gate_question(node), self.gate_choices(node), bool(node.get("multi")))
+                yes, text = parse_answer(reply)
                 self.note(node["id"], "gate yes" if yes else "gate no")
-                self.outputs[node["id"]] = f"Arjun answered {'yes' if yes else 'no'}" + (f": {text}" if text else "")
+                shown = answer_text(reply)  # keep the exact choice, with its case
+                self.outputs[node["id"]] = f"Arjun answered {'yes' if yes else 'no'}" + (f": {shown}" if shown else "")
                 if not yes:
                     if "undo" in text:
                         await self.undo(order[:i], byid, done)
@@ -235,7 +261,8 @@ def make_app(executor: Callable, open_gate: Callable = spawn_gate, compact: Call
 
     executor(job) runs one node and returns {"ok": bool, "output": str}. job has module,
     task_id, task, node, action ("do" or "undo"), instruction and attempt.
-    open_gate(gate_id, task, question) shows the popup. compact(module) compacts the session.
+    open_gate(gate_id, task, question[, choices, multi]) shows the popup; it gets choices and multi
+    only when a node that the gate needs offered choices. compact(module) compacts the session.
     """
     module = restate.VirtualObject("module")
 

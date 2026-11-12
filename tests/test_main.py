@@ -177,6 +177,41 @@ def test_gate_answer_keeps_detail_after_first_word(tmp_path):
     app.close()
 
 
+def sub(tmp_path, i):
+    (tmp_path / str(i)).mkdir()
+    return tmp_path / str(i)
+
+
+def test_choice_gate_answer_by_number_or_name(tmp_path):
+    films = ["I Play Rocky 19:30", "Dune 20:00"]
+    for i, (said, expected) in enumerate((("2", films[1]), ("Two.", films[1]), ("the rocky one", None), ("i play rocky 19:30", films[0]))):
+        app, _, _ = app_for(sub(tmp_path, i), route=Mock())
+        app.status = lambda _: {"id": "g1", "task": "movies", "question": "Which?", "choices": films, "multi": False}
+        app.accept(said)
+        if expected:
+            app.resolve.assert_called_once_with("g1", {"answer": "yes", "text": expected})
+        else:  # no match: the old rule says this is unclear and it is not routed
+            app.resolve.assert_not_called()
+        app.close()
+
+
+def test_choice_gate_yes_no_still_work(tmp_path):
+    app, _, _ = app_for(tmp_path, route=Mock())
+    app.status = lambda _: {"id": "g1", "task": "movies", "question": "Which?", "choices": ["A", "B"]}
+    app.accept("no")
+    app.resolve.assert_called_once_with("g1", {"answer": "no", "text": ""})
+    app.close()
+
+
+def test_open_gate_remembers_choices_for_the_popup(tmp_path):
+    popup = Mock()
+    app, _, _ = app_for(tmp_path, popup=popup)
+    app.open_gate("g", "t", "q", ["a"], True)
+    popup.assert_called_once_with("g", "t", "q", ["a"], True)
+    assert app.waiting["g"]["choices"] == ["a"]
+    app.close()
+
+
 def test_new_module_folder_is_picked_up_without_restart(tmp_path):
     app, module, harness = app_for(tmp_path, route=Mock(return_value=Route(kind="no_fit", question="No module fits.")))
     new = Mock(); new.name = "clean-space"; new.description = "Free disk space"

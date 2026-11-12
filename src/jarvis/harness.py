@@ -115,10 +115,12 @@ class Harness:
             # A fresh path per attempt prevents an old node result from passing a retry.
             path = directory / f"{uuid.uuid4().hex}.json"
             self.send_and_wait(module, text + f'\nWrite your result JSON to {path}: '
-                               '{"ok": true or false, "output": "plain result or failure reason"}. '
+                               '{"ok": true or false, "output": "plain result or failure reason"} '
+                               '(add "choices": ["...", ...] when Arjun must pick from options). '
                                'Write the file before ending your turn. Do not start another session.')
             result = json.loads(path.read_text())
-            if not isinstance(result, dict) or type(result.get("ok")) is not bool or not isinstance(result.get("output"), str):
+            if not isinstance(result, dict) or type(result.get("ok")) is not bool or not isinstance(result.get("output"), str) \
+                    or not all(isinstance(c, str) for c in result.get("choices", [])):
                 raise ValueError(f"Invalid pi result in {path}")
             return result
 

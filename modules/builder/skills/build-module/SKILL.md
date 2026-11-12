@@ -90,6 +90,10 @@ The engine sends you one node instruction at a time, in DAG order. For each inst
 - Do not skip, simulate or answer a gate. The engine owns each gate.
 - Reply with `ok` or `failed` and one line of detail. End each reply with the node id.
 
+### Choices at a gate
+
+If Arjun must pick from options, the node before the gate returns them: `{"ok": true, "output": "...", "choices": ["option 1", "option 2"]}`. The gate (add `"multi": true` for several picks) then shows a pick list with "Other…" for free text, and the next node sees the exact pick under "Results of earlier nodes". Ask for free text only when no list can exist. See `docs/dag-format.md`.
+
 ## 3. ClickUp (the `clickup` CLI)
 
 The build gets one ClickUp task. The list is `Jarvis Relay` (id `901617700405`, in the `Projects` folder). Use the CLI only. Do not print or write a token. If `clickup auth status` says you are not logged in, answer `failed` with that text. Do not look for a token.
