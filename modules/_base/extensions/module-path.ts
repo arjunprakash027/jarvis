@@ -56,19 +56,19 @@ function latestTask(moduleDir: string): string | undefined {
   return sorted.length ? path.join(tasks, sorted[0].name) : undefined;
 }
 
-/** A node is done when a result file with ok true exists, failed when ok is false, else waiting. */
+/** Newest result file for the node (named <id>.json or <id>-<suffix>.json) decides: done, failed or waiting. */
 function nodeStatus(taskDir: string, id: string): string {
   const dir = path.join(taskDir, "nodes");
-  const candidates = [path.join(dir, `${id}.json`)];
-  if (fs.existsSync(dir)) for (const name of fs.readdirSync(dir)) if (name.startsWith(`${id}`) && name.endsWith(".json")) candidates.push(path.join(dir, name));
-  for (const file of candidates) {
-    try {
-      const data = JSON.parse(fs.readFileSync(file, "utf8"));
-      if (data.ok === true) return "done";
-      if (data.ok === false) return "failed";
-    } catch { /* missing or unreadable: keep looking */ }
-  }
-  return "waiting";
+  if (!fs.existsSync(dir)) return "waiting";
+  const files = fs.readdirSync(dir)
+    .filter((name) => name.endsWith(".json") && (name === `${id}.json` || name.startsWith(`${id}-`)))
+    .map((name) => ({ file: path.join(dir, name), time: fs.statSync(path.join(dir, name)).mtimeMs }))
+    .sort((x, y) => y.time - x.time);
+  if (files.length === 0) return "waiting";
+  try {
+    const data = JSON.parse(fs.readFileSync(files[0].file, "utf8"));
+    return data.ok === true ? "done" : data.ok === false ? "failed" : "waiting";
+  } catch { return "waiting"; }
 }
 
 function whereReport(moduleDir: string): string {

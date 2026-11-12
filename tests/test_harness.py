@@ -92,7 +92,8 @@ def test_executor_reads_fresh_json_per_attempt(tmp_path):
     assert harness.executor(job) == {"ok": True, "output": "done"}
     fake.result = {"ok": False, "output": "failed"}
     assert harness.executor(job)["ok"] is False
-    assert len(list((module.tasks_dir / "task1/nodes").glob("*.json"))) == 2
+    names = [f.name for f in (module.tasks_dir / "task1/nodes").glob("*.json")]
+    assert len(names) == 2 and all(n.startswith("a-") for n in names)
 
 
 def test_rejects_malformed_result_and_task_traversal(tmp_path):
