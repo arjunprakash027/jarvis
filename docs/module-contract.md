@@ -36,3 +36,9 @@ Every module extends `ModuleBase` from `src/jarvis/modules.py` and loads `module
 4. **Compaction step (`compaction_step`)**: When a task run finishes, Jarvis compacts the context of the module's single `pi` session.
 
 A module cannot turn off or override any of these four base parts in `module.toml`. Any key that tries to disable a base part is refused by `load_module()`.
+
+## Standard Module Path
+
+- `modules/_base/extensions/module-path.ts` is loaded into every module session before the module's own extensions. A module must not copy or skip it.
+- It checks each write in `tasks/<id>/` (`dag.json` with `jarvis dag check`, `nodes/<x>.json` for `ok`, `output` and a short first sentence), and tells the session once to write a missing node result file.
+- `/where` shows the module, task folder, `dag.json`, each node with its status (done, failed, waiting) and `log.md`.

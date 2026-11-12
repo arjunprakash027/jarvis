@@ -14,6 +14,8 @@ def example(tmp_path):
     module_dir.mkdir()
     base = tmp_path / "_base"
     base.mkdir()
+    (base / "extensions").mkdir()
+    (base / "extensions" / "module-path.ts").write_text("// base")
     (base / "CLAUDE.md").write_text("Base rules")
     (module_dir / "CLAUDE.md").write_text("Module rules")
     (module_dir / "skills").mkdir()
@@ -73,6 +75,9 @@ def test_one_session_and_ordered_context(tmp_path):
     assert base_index < launch.index(str(module.path / "CLAUDE.md"))
     assert str(module.skills_dir) in launch
     assert str(module.extensions_dir / "tool.ts") in launch
+    base_ext = launch.index(str(module.base.base_dir / "extensions" / "module-path.ts"))
+    assert launch[base_ext - 1] == "-e"
+    assert base_ext < launch.index(str(module.extensions_dir / "tool.ts"))
     sends = [c for c in fake.calls if c[1] == "send"]
     assert [c[2] for c in sends] == ["jarvis-example", "jarvis-example"]
     assert sum(c[1] == "read" for c in fake.calls) == 2
@@ -87,7 +92,8 @@ def test_executor_reads_fresh_json_per_attempt(tmp_path):
     assert harness.executor(job) == {"ok": True, "output": "done"}
     fake.result = {"ok": False, "output": "failed"}
     assert harness.executor(job)["ok"] is False
-    assert len(list((module.tasks_dir / "task1/nodes").glob("*.json"))) == 2
+    names = [f.name for f in (module.tasks_dir / "task1/nodes").glob("*.json")]
+    assert len(names) == 2 and all(n.startswith("a-") for n in names)
 
 
 def test_rejects_malformed_result_and_task_traversal(tmp_path):
