@@ -133,3 +133,7 @@ The build gets one ClickUp task. The list is `Jarvis Relay` (id `901617700405`, 
 - `/usr/bin/trash FILE...` moves files to the Trash. Use it, never `rm`.
 - To restore a trashed item, move it back with Finder (`put away` does not work): `osascript -e 'tell application "Finder" to move (every item of trash whose name is "NAME") to (POSIX file "ORIGINAL_FOLDER" as alias)'`. Write the original folder of each trashed item in the run log, because the Trash cannot be read from a terminal.
 - `du -sk ~/Library/Caches/<app>` works for each cache folder. `find ~/Downloads -maxdepth 1 -mtime +N` lists the top-level items older than N days.
+
+## 6. The standard module path
+
+Every module gets `modules/_base/extensions/module-path.ts` from the base. The harness loads it before the module's own extensions, so a new module must not copy it or add its own version. It checks each write in `tasks/<id>/`: `dag.json` runs `jarvis dag check`; `nodes/<x>.json` needs `ok` (bool) and `output` (string, first sentence 10 words or less). If the session ends a node without its result file, it is told once to write it. `/where` in the module session shows the module, task folder, `dag.json`, each node with its status, and `log.md`.

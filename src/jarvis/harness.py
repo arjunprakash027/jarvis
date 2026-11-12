@@ -72,10 +72,12 @@ class Harness:
                 args.extend(["--append-system-prompt", str(path)])
             if module.skills_dir.is_dir():
                 args.extend(["--skill", str(module.skills_dir)])
-            if module.extensions_dir.is_dir():
-                for path in sorted(module.extensions_dir.iterdir()):
-                    if path.suffix in (".ts", ".js"):
-                        args.extend(["-e", str(path)])
+            # The base extensions come first and every module gets them.
+            for directory in (module.base.base_dir / "extensions", module.extensions_dir):
+                if directory.is_dir():
+                    for path in sorted(directory.iterdir()):
+                        if path.suffix in (".ts", ".js"):
+                            args.extend(["-e", str(path)])
             self.hc(*args)
             self._wait(name)
             return name
