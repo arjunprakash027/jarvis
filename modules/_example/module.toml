@@ -1,0 +1,8 @@
+name = "example"
+description = "Minimal template module showing the Jarvis module contract"
+agent = "pi"
+model = "claude-sonnet-4-5"
+directory = "modules/_example"
+task_size = "short"
+required_gates = ["confirm"]
+mcp_servers = []
