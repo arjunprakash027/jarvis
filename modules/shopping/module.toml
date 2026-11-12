@@ -1,7 +1,7 @@
 name = "shopping"
 description = "Buy groceries on Tesco"
 agent = "pi"
-model = "antigravity/claude-sonnet-5-5"
+model = "openai/gpt-6.1-sol"
 directory = "modules/shopping"
 task_size = "short"
 required_gates = ["pay"]
