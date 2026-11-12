@@ -1,0 +1,8 @@
+name = "builder"
+description = "Build, make or create new software: a new tool or a new Jarvis module, even one for a task another module does"
+agent = "pi"
+model = "openai/gpt-6.1-sol"
+directory = "modules/builder"
+task_size = "long"
+required_gates = ["approve-plan"]
+mcp_servers = []

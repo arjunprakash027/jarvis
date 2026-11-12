@@ -1,0 +1,9 @@
+{
+  "task": "Add milk, eggs and bread to my Tesco basket",
+  "nodes": [
+    {"id": "search", "type": "step", "do": "Inspect the Tesco trolley and require an empty starting basket; otherwise stop for instructions. Search milk, eggs and bread, pick sensible defaults using the tesco skill and note their names and prices.", "needs": []},
+    {"id": "basket", "type": "step", "do": "Add each chosen pack to the basket once; wait for saved quantities and totals before navigating. Inspect before retrying to avoid duplicate additions.", "needs": ["search"], "undo": "Remove only this run's added quantities and verify cleanup; empty the whole basket only if no unrelated groceries exist (see the tesco skill)."},
+    {"id": "verify", "type": "test", "do": "On the trolley review page confirm exactly milk, eggs and bread with quantity 1 pack each. Read Total (estimated), Guide price and minimum-basket charge. Return the products, quantities, observed amounts and lack of a delivery slot in result JSON output; the engine appends this output to the pay gate question.", "needs": ["basket"], "on_fail": "search"},
+    {"id": "pay", "type": "gate", "do": "Tesco basket review: the verification result below states the 3 items, observed estimated total and charges; delivery is not selected. End the demo here, stopped before payment? For demo cleanup answer no, undo. Never click Checkout or open payment.", "needs": ["verify"]}
+  ]
+}
