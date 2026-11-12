@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-agent";
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
@@ -8,6 +8,7 @@ import * as path from "node:path";
 // Task files live in <module>/tasks/<id>/: dag.json, nodes/<x>.json, log.md.
 
 const MARKER = "Write your result JSON to ";
+const NODE_LINE = /^Node: (\S+) \(/m;
 
 /** Split a path under <module>/tasks/<id>/ into its parts, or undefined if it is elsewhere. */
 function taskParts(file: string): { module: string; taskDir: string; rest: string[] } | undefined {
@@ -79,6 +80,20 @@ function nodeStatus(taskDir: string, id: string): string {
   } catch { return "waiting"; }
 }
 
+interface DeckNode { id: string; type: string; status: string }
+
+/** The latest task's DAG with each node's live status, or undefined before a DAG exists. */
+function readDeck(moduleDir: string): { task: string; nodes: DeckNode[] } | undefined {
+  const task = latestTask(moduleDir);
+  if (task === undefined) return undefined;
+  const dag = path.join(task, "dag.json");
+  if (!fs.existsSync(dag)) return undefined;
+  try {
+    const nodes: any[] = JSON.parse(fs.readFileSync(dag, "utf8")).nodes ?? [];
+    return { task, nodes: nodes.map((n) => ({ id: String(n.id), type: String(n.type), status: nodeStatus(task, String(n.id)) })) };
+  } catch { return undefined; }
+}
+
 function whereReport(moduleDir: string): string {
   const lines = [`module: ${path.basename(moduleDir)}`, `module folder: ${moduleDir}`];
   const task = latestTask(moduleDir);
@@ -95,19 +110,70 @@ function whereReport(moduleDir: string): string {
   return lines.join("\n");
 }
 
+const ICONS: Record<string, string> = { done: "✓", running: "●", failed: "✗", waiting: "○" };
+
+function deckLines(deck: { task: string; nodes: DeckNode[] }, runningNode: string | undefined): string[] {
+  const lines = [`DAG: ${path.basename(deck.task)}`];
+  for (const node of deck.nodes) {
+    const status = runningNode === node.id && node.status === "waiting" ? "running" : node.status;
+    lines.push(`${ICONS[status] ?? "○"} ${node.id}  ${node.type}  ${status}`);
+  }
+  return lines;
+}
+
+function statusText(deck: { nodes: DeckNode[] } | undefined, runningNode: string | undefined): string | undefined {
+  if (deck === undefined || deck.nodes.length === 0) return undefined;
+  const total = deck.nodes.length;
+  const done = deck.nodes.filter((n) => n.status === "done").length;
+  if (done === total) return "DAG: all done";
+  if (runningNode !== undefined) {
+    const node = deck.nodes.find((n) => n.id === runningNode);
+    return `DAG [${Math.min(done + 1, total)}/${total}] ${runningNode}: ${node?.type === "gate" ? "gate waiting" : "running"}`;
+  }
+  const failed = deck.nodes.find((n) => n.status === "failed");
+  if (failed) return `DAG [${done}/${total}] ${failed.id}: failed`;
+  const next = deck.nodes.find((n) => n.status === "waiting");
+  if (next?.type === "gate") return `DAG [${done}/${total}] ${next.id}: gate waiting`;
+  return `DAG [${done}/${total}] idle`;
+}
+
 export default function modulePath(pi: ExtensionAPI): void {
   let resultFile: string | undefined;
   let settleFired = false;
+  let runningNode: string | undefined;
+  let expanded = false;
 
-  pi.on("before_agent_start", async (event: any): Promise<void> => {
+  function refresh(ctx: ExtensionContext): void {
+    if (!ctx.hasUI) return;
+    const deck = readDeck(path.resolve(ctx.cwd));
+    ctx.ui.setStatus("dag-live", statusText(deck, runningNode));
+    ctx.ui.setWidget("dag-live", expanded && deck ? deckLines(deck, runningNode) : undefined, { placement: "aboveEditor" });
+  }
+
+  function toggle(ctx: ExtensionContext): void {
+    expanded = !expanded;
+    refresh(ctx);
+  }
+
+  pi.on("before_agent_start", async (event: any, ctx): Promise<void> => {
     settleFired = false;
     resultFile = undefined;
     const prompt: string = String(event.prompt ?? "");
+    runningNode = NODE_LINE.exec(prompt)?.[1];
     const at = prompt.indexOf(MARKER);
-    if (at < 0) return;
-    const rest = prompt.slice(at + MARKER.length);
-    const end = rest.indexOf(".json");
-    if (end >= 0) resultFile = rest.slice(0, end + 5);
+    if (at >= 0) {
+      const rest = prompt.slice(at + MARKER.length);
+      const end = rest.indexOf(".json");
+      if (end >= 0) resultFile = rest.slice(0, end + 5);
+    }
+    refresh(ctx);
+  });
+
+  pi.on("agent_start", async (_event, ctx): Promise<void> => { refresh(ctx); });
+
+  pi.on("agent_end", async (_event, ctx): Promise<void> => {
+    runningNode = undefined;
+    refresh(ctx);
   });
 
   pi.on("tool_result", async (event, ctx) => {
@@ -118,6 +184,7 @@ export default function modulePath(pi: ExtensionAPI): void {
     let problems: string[] = [];
     if (where.rest.length === 1 && where.rest[0] === "dag.json") problems = checkDag(file, where.module);
     else if (where.rest.length === 2 && where.rest[0] === "nodes" && file.endsWith(".json")) problems = checkNode(file);
+    refresh(ctx);
     if (problems.length === 0) return undefined;
     const report = `Module path check:\n${problems.join("\n")}\nFix this before finishing.`;
     if (ctx.hasUI) ctx.ui.notify(report, "warning");
@@ -131,10 +198,21 @@ export default function modulePath(pi: ExtensionAPI): void {
     return { continue: true, entries: [{ type: "custom_message" as const, customType: "module-path", display: true, content: `The result file ${resultFile} does not exist yet. Write it now: {"ok": true or false, "output": "short result"}.` }] };
   });
 
+  pi.registerCommand("dag", {
+    description: "Toggle the live DAG deck above the editor",
+    handler: async (_args, ctx): Promise<void> => { toggle(ctx); },
+  });
+
+  pi.registerShortcut("ctrl+d", {
+    description: "Toggle the live DAG deck",
+    handler: (ctx): void => { toggle(ctx); },
+  });
+
   pi.registerCommand("where", {
     description: "Show this module's task path: DAG, node statuses and files",
     handler: async (_args, ctx): Promise<void> => {
       const report = whereReport(path.resolve(ctx.cwd));
+      refresh(ctx);
       if (ctx.hasUI) ctx.ui.notify(report, "info");
       pi.sendMessage({ customType: "module-path", display: true, content: report });
     },
