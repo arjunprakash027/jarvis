@@ -5,6 +5,8 @@ description: Build and verify a Tesco Ireland grocery basket with ego-browser, s
 
 # Tesco basket
 
+Start every node result output with the key fact in 10 words or fewer, for example: "Basket total EUR 9.35, 3 items." Jarvis speaks at most 18 words. Put product names, quantities, charges, caveats and cleanup evidence after that short first sentence; do not omit them from the written result.
+
 Run `ego-browser skill` and follow its current guide. Use one TaskSpace per request; resume its numeric ID between calls. No other browser tool. These page steps were explored with a signed-in account in Phase A.
 
 ## Safety and starting state
