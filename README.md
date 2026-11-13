@@ -7,6 +7,7 @@
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-5eead4">
   <img alt="Speech to text: local" src="https://img.shields.io/badge/speech%20to%20text-local-7dd3fc">
   <img alt="Each task has a human gate" src="https://img.shields.io/badge/human%20gate-in%20each%20task-a78bfa">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-34d399"></a>
 </p>
 
 **Jarvis is a voice assistant that runs on your Mac.** You speak a request. Jarvis writes a plan as a small graph, checks the plan in code, runs it one step at a time in a visible agent session, and stops to ask you before each decision that matters.
@@ -17,7 +18,7 @@
 
 ## Contents
 
-[How it works](#how-it-works) · [Quick start](#quick-start) · [What you need](#what-you-need) · [Use it](#use-it) · [Modules](#modules) · [The task graph](#the-task-graph) · [Settings](#settings) · [Set up with an AI agent](#set-up-with-an-ai-agent) · [File map](#file-map) · [Problems](#problems) · [Status and limits](#status-and-limits)
+[How it works](#how-it-works) · [Quick start](#quick-start) · [What you need](#what-you-need) · [Use it](#use-it) · [Modules](#modules) · [The task graph](#the-task-graph) · [Settings](#settings) · [Set up with an AI agent](#set-up-with-an-ai-agent) · [File map](#file-map) · [Problems](#problems) · [Status and limits](#status-and-limits) · [License](#license)
 
 ## How it works
 
@@ -88,7 +89,7 @@ uv run jarvis up --text
 | [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and `ggml-base.en.bin` | Local speech to text. | Yes |
 | [Restate](https://restate.dev) (`restate-server`, `restate`) | The task engine. | Yes |
 | [pi](https://pi.dev) (`pi-coding-agent`) | The agent in each module session. | Yes |
-| Herdr Core (`hc`) | Keeps each agent session alive in a terminal that you can open. | No |
+| Herdr Core (`hc`) | Keeps each agent session alive in a terminal that you can open. How you install it depends on your setup. The script only checks for it. | No |
 | Xcode command line tools (`swiftc`) | Builds the progress window on first use. Optional. | No |
 | A TypeSafe key | The router. | No |
 | A model provider in `pi` | The model for each module session. | No |
@@ -281,7 +282,10 @@ To make the skills available in each project, copy them to the skills folder of 
 - A purchase stops before payment. Jarvis does not open a card-entry page.
 - Jarvis has no memory across modules. Each module session keeps a compact summary of its own earlier runs.
 - No wake word. You start each request with the hotkey or Enter.
-- The repository has no license file at this time.
+
+## License
+
+[MIT](LICENSE).
 
 ## More to read
 

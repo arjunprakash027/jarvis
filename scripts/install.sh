@@ -77,7 +77,7 @@ step "3. Tools this script does not install"
 if have hc; then
   ok "hc (Herdr Core: keeps each agent session alive in a terminal)"
 else
-  bad "hc is missing. Install Herdr Core, then run this script again."
+  bad "hc is missing. Install Herdr Core in the way that fits your setup, then run this script again."
 fi
 if have swiftc; then
   ok "swiftc (builds the progress window on first use)"
