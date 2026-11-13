@@ -29,10 +29,11 @@ def http(method: str, url: str, body=None):
 class Jarvis:
     def __init__(self, modules, harness, *, route=router.route, say=voice.speak,
                  submit=engine.submit, result=engine.result, resolve=gate.resolve_gate,
-                 status=None, popup=gate.spawn_gate, reload=None):
+                 status=None, popup=gate.spawn_gate, reload=None, transcribe=voice.transcribe):
         self.reload = reload  # returns the current modules; a new module works with no restart
         self.modules = {m.name: m for m in modules}
         self.harness, self.route, self.say = harness, route, say
+        self.transcribe = transcribe
         self.submit, self.result, self.resolve = submit, result, resolve
         self.status = status or self._status
         self.popup = popup
@@ -94,6 +95,27 @@ class Jarvis:
                 self.waiting.setdefault(key, value)
             return next(iter(self.waiting.values()), None)
 
+    def on_window(self, message: dict):
+        """One line from the hotkey window: a finished recording is transcribed, shown, and routed."""
+        kind = message.get("event")
+        if kind in ("ready", "error"):
+            event("hotkey", message.get("text", ""))
+        elif kind == "recorded":  # "cancelled" needs nothing: no request is sent
+            wav = Path(message["wav"])
+            text, started = "", time.monotonic()
+            try:
+                text = self.transcribe(wav).strip()
+            except Exception as exc:  # no model, whisper failed: say so, keep the hotkey alive
+                event("hotkey", f"transcription failed: {exc}")
+            finally:
+                wav.unlink(missing_ok=True)
+            hud.heard(text)
+            if text:
+                try:
+                    self.accept(text, time.monotonic() - started)
+                except (OSError, ValueError, RuntimeError) as exc:
+                    self.tell(f"Request failed: {exc}")
+
     def accept(self, text: str, heard_seconds: float | None = None):
         text = text.strip()
         if not text:
@@ -129,6 +151,7 @@ class Jarvis:
             event("route", f"{decision.kind}: asking \"{decision.question}\"")
             self.pending = "" if decision.kind == "no_fit" else request
             self.tell(decision.question or "No module fits.")
+            hud.notice(decision.question or "No module fits.")
             return None
         event("route", f"{decision.module} ({decision.score:.2f}) · detail ok" + (" · long task" if decision.long_task else ""))
         self.pending = ""
@@ -231,6 +254,7 @@ def up(modules_dir: Path, *, text: bool = False) -> int:
     app = Jarvis(modules, Harness(modules), reload=lambda: load_modules(modules_dir))
     start_services(app)
     if not text:
+        hud.open_window(app.on_window)  # the hotkey window lives until we exit
         fixture = Path(__file__).resolve().parents[2] / "tests/fixtures/request.wav"
         voice.transcribe(fixture)  # warm whisper once; the first transcription is slow
     print("Jarvis ready. Ctrl-C to stop.", flush=True)
@@ -246,4 +270,5 @@ def up(modules_dir: Path, *, text: bool = False) -> int:
         print("Input stopped. Waiting for active tasks; answer any open popup.", flush=True)
     finally:
         app.close()
+        hud.close()
     return 0

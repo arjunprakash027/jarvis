@@ -1,9 +1,11 @@
-"""Fly-in progress HUD: a small floating window with the live DAG and the latest log lines.
+"""The Jarvis window: the hotkey listening pill and the fly-in HUD with the live DAG and log lines.
 
-The window is a Swift AppKit program (hud_app.swift) compiled to bin/jarvis-hud. Python keeps
-the task state here and sends it as one JSON line on the program's stdin after each change.
-Closing stdin tells the window to fade out. Set JARVIS_NO_HUD=1 to never open a window;
-under pytest no window opens either. The state functions work the same without a window.
+The window is a Swift AppKit program (hud_app.swift) compiled to bin/jarvis-hud. It lives for the
+whole `jarvis up` session (open_window) so it can catch the hotkey; it records the request itself and
+prints JSON lines on stdout, which reach the `on_event` callback. Python keeps the task state here and
+sends it as one JSON line on the program's stdin after each change. close() makes the window fade out.
+Set JARVIS_NO_HUD=1 to never open a window; under pytest no window opens either.
+The state functions work the same without a window.
 """
 
 import json
@@ -26,6 +28,7 @@ ICONS = {"done": "✓", "running": "●", "waiting": "○", "failed": "✗", "ga
 _state = {"module": "", "task_id": "", "request": "", "nodes": [], "log": deque(maxlen=LOG_LINES)}
 _lock = threading.Lock()
 _proc = None
+_on_event = None
 _queue: queue.Queue = queue.Queue()
 _writer = None
 
@@ -81,6 +84,24 @@ def start(module: str, task_id: str, request: str) -> None:
     _send()
 
 
+def open_window(on_event) -> None:
+    """Start the long-running window now, so the hotkey works. `on_event(dict)` gets each line it prints."""
+    global _proc, _on_event
+    _on_event = on_event
+    if enabled() and (_proc is None or _proc.poll() is not None):
+        _proc = _spawn()
+
+
+def heard(text: str) -> None:
+    """Show the transcript in the pill ("" means nothing was understood)."""
+    _send_raw({"heard": text})
+
+
+def notice(text: str) -> None:
+    """Show a short message (a question) in the window, then let it fade."""
+    _send_raw({"notice": text})
+
+
 def update_dag(nodes: list[dict]) -> None:
     """Show these DAG nodes (dag.json `nodes`); each starts as waiting."""
     with _lock:
@@ -102,9 +123,14 @@ def add_log(kind: str, text: str) -> None:
 
 
 def stop() -> None:
-    """The task ended: send the final state and let the window fade out."""
-    global _proc
+    """The task ended: send the final state; the window hides itself a moment later."""
     _send()
+    _send_raw({"idle": True})
+
+
+def close() -> None:
+    """Jarvis is exiting: closing stdin makes the window fade out and quit."""
+    global _proc
     if _proc is not None:
         _queue.put((_proc, None))
         _proc = None
@@ -116,26 +142,45 @@ def _listener(kind: str, text: str) -> None:
 
 
 def _send() -> None:
+    _send_raw(snapshot())
+
+
+def _send_raw(message: dict) -> None:
     if _proc is not None:
-        _queue.put((_proc, json.dumps(snapshot()) + "\n"))
+        _queue.put((_proc, json.dumps(message) + "\n"))
 
 
 def _spawn():
     """Start bin/jarvis-hud, compiling it from hud_app.swift first when it is missing."""
     global _writer
-    if BINARY.is_file():
+    if BINARY.is_file() and BINARY.stat().st_mtime >= SOURCE.stat().st_mtime:  # rebuild after the source changed
         cmd = [str(BINARY)]
     else:
         BINARY.parent.mkdir(exist_ok=True)
         cmd = ["sh", "-c", f'swiftc -O -o "$1" "$2" 2>/dev/null && exec "$1"', "hud", str(BINARY), str(SOURCE)]
     try:
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     except OSError:
         return None
     if _writer is None or not _writer.is_alive():
         _writer = threading.Thread(target=_drain, daemon=True)
         _writer.start()
+    threading.Thread(target=_read, args=(proc,), daemon=True).start()
     return proc
+
+
+def _read(proc) -> None:
+    """Pass each JSON line the window prints (recorded, cancelled, ready, error) to the callback."""
+    for line in proc.stdout:
+        try:
+            message = json.loads(line)
+        except ValueError:
+            continue
+        if _on_event and isinstance(message, dict):
+            try:
+                _on_event(message)
+            except Exception as exc:  # one bad event must not end the hotkey
+                log.event("hotkey", f"error: {type(exc).__name__}: {exc}")
 
 
 def _drain() -> None:
