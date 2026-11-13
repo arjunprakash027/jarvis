@@ -3,9 +3,28 @@ import threading
 from unittest.mock import Mock
 
 from jarvis.cli import main
-from jarvis.main import Jarvis
+from jarvis.main import Jarvis, start_services
 from jarvis.router import Route
 from test_harness import example
+
+
+def test_start_services_uses_stable_restate_node_name(tmp_path, monkeypatch):
+    import jarvis.main as jarvis_main
+
+    monkeypatch.setattr(jarvis_main.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(jarvis_main, "http", Mock(side_effect=OSError("not running")))
+    monkeypatch.setattr(jarvis_main.engine, "serve", Mock())
+    monkeypatch.setattr(jarvis_main.engine, "register", Mock())
+    app = Mock()
+    app.harness.hc.return_value = {"terminals": []}
+
+    start_services(app)
+
+    app.harness.hc.assert_any_call(
+        "run", "--bg", "--name", "jarvis-restate", "--cwd",
+        str(tmp_path / ".local/share/jarvis/restate"),
+        "restate-server", "--node-name", "jarvis-restate",
+    )
 
 
 def dag():

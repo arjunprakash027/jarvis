@@ -13,7 +13,7 @@ Edit `modules/example/module.toml`. Set `directory` to the absolute module folde
 uv run jarvis up
 ```
 
-Jarvis starts or reuses the local Restate server on ports 9070/8080. It serves its executor on 9080 and registers it. Run only one `jarvis up` process for these ports. It warms whisper once using `tests/fixtures/request.wav`. Press Enter to record, speak, then press Enter to stop. See `docs/voice.md` for the model and microphone setup.
+Jarvis starts or reuses the local Restate server on ports 9070/8080. When starting its own server, it uses the stable node name `jarvis-restate` and stores data under `~/.local/share/jarvis/restate/restate-data`. Existing stores created with another node name cannot simply be renamed; preserve their data and use their original name, or back them up before starting a fresh store. It serves its executor on 9080 and registers it. Run only one `jarvis up` process for these ports. It warms whisper once using `tests/fixtures/request.wav`. Press Enter to record, speak, then press Enter to stop. See `docs/voice.md` for the model and microphone setup.
 
 Hotkey: press Option+Space in any app to speak. A pill with a waveform drops in at the top of the screen. Press Option+Space again to send. Esc cancels.
 The pill shows what you said, then turns into the fly-in window for that task. Enter in the terminal still works.

@@ -225,7 +225,7 @@ def start_services(app: Jarvis, *, service_port=9080):
         if not any(t.get("name") == "jarvis-restate" and t.get("state") == "live" for t in terminals):
             state_dir = Path.home() / ".local/share/jarvis/restate"
             state_dir.mkdir(parents=True, exist_ok=True)
-            app.harness.hc("run", "--bg", "--name", "jarvis-restate", "--cwd", str(state_dir), "restate-server")
+            app.harness.hc("run", "--bg", "--name", "jarvis-restate", "--cwd", str(state_dir), "restate-server", "--node-name", "jarvis-restate")
     errors = []
 
     def serve():
