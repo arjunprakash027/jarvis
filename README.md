@@ -17,6 +17,7 @@ Jarvis is a local voice-driven task automation engine on macOS that combines fix
 | `src/jarvis/gate.py` | Opens a macOS dialog, speaks the gate question, and returns the human answer. | `engine.py`, `voice.py` |
 | `src/jarvis/harness.py` | Manages each module's single `pi` session in `herdr` (start, send, read, compact). | `engine.py`, `main.py` |
 | `src/jarvis/main.py` | Runs `jarvis up`: listen, route, execute DAG, and report. | All `src/jarvis/` modules |
+| `src/jarvis/hud.py`, `src/jarvis/hud_app.swift` | Fly-in progress window (top-right, floating, never takes focus) showing the live DAG and log while a task runs. The Swift panel is compiled to `bin/jarvis-hud` on first use. `JARVIS_NO_HUD=1` turns it off. | `main.py`, `log.py` |
 | `modules/_base/CLAUDE.md` | Base instructions and DAG rules loaded into every module session. | `src/jarvis/modules.py`, `harness.py` |
 | `modules/_example/` | Reference module template (`module.toml`, `CLAUDE.md`, `skills/`, `extensions/`). | `src/jarvis/modules.py` |
 | `docs/module-contract.md` | Documents the module folder structure, `module.toml` schema, and base rules. | `src/jarvis/modules.py`, `modules/_base/CLAUDE.md` |
