@@ -15,6 +15,11 @@ uv run jarvis up
 
 Jarvis starts or reuses the local Restate server on ports 9070/8080. It serves its executor on 9080 and registers it. Run only one `jarvis up` process for these ports. It warms whisper once using `tests/fixtures/request.wav`. Press Enter to record, speak, then press Enter to stop. See `docs/voice.md` for the model and microphone setup.
 
+Hotkey: press Option+Space in any app to speak. A pill with a waveform drops in at the top of the screen. Press Option+Space again to send. Esc cancels.
+The pill shows what you said, then turns into the fly-in window for that task. Enter in the terminal still works.
+Change the key with `JARVIS_HOTKEY`, for example `JARVIS_HOTKEY=cmd+shift+j` (modifiers option, cmd, ctrl, shift; key a-z, 0-9 or space).
+The first press asks for microphone access for your terminal app (System Settings > Privacy & Security > Microphone). `JARVIS_NO_HUD=1` turns the window and hotkey off.
+
 For typed input without whisper or microphone access:
 
 ```sh

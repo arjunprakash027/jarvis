@@ -1,5 +1,8 @@
 """The fly-in HUD state. No window opens under pytest (hud.enabled() is False)."""
 
+import json
+import queue
+import time
 from unittest.mock import Mock, patch
 
 from jarvis import hud, log
@@ -85,6 +88,89 @@ def test_start_spawns_when_enabled(monkeypatch):
             patch.object(hud._queue, "put") as put:
         hud.start("builder", "t3", "x")
         hud.stop()
-    spawn.assert_called_once()
-    assert put.call_args_list[-1].args[0] == (proc, None)  # stdin closes: the window fades out
+        spawn.assert_called_once()
+        assert json.loads(put.call_args_list[-1].args[0][1]) == {"idle": True}  # the window stays for the hotkey
+        assert hud._proc is proc
+        hud.close()
+        assert put.call_args_list[-1].args[0] == (proc, None)  # stdin closes: the window fades out
     assert hud._proc is None
+
+
+class FakeWindow:
+    """Stands in for bin/jarvis-hud: `lines` feeds its stdout, `sent` collects what Python wrote to stdin."""
+
+    def __init__(self):
+        self.lines: queue.Queue = queue.Queue()
+        self.sent = []
+        self.stdin = Mock(write=lambda s: self.sent.append(json.loads(s)), flush=lambda: None, close=lambda: None)
+        self.stdout = iter(self.lines.get, None)
+
+    def poll(self):
+        return None
+
+    def print(self, **message):
+        self.lines.put(json.dumps(message) + "\n")
+
+
+def wait_for(check):
+    for _ in range(300):
+        if check():
+            return True
+        time.sleep(0.01)
+    return False
+
+
+def test_hotkey_recording_is_transcribed_routed_and_shown(tmp_path):
+    wav = tmp_path / "request.wav"
+    wav.write_bytes(b"RIFF")
+    route = Mock(return_value=Route(module="example", score=0.9))
+    app, _, _ = app_for(tmp_path, route=route, transcribe=Mock(return_value=" buy apples "))
+    fake = FakeWindow()
+    fake_binary = tmp_path / "jarvis-hud"
+    fake_binary.touch()
+    with patch.object(hud, "enabled", return_value=True), patch.object(hud, "BINARY", fake_binary), \
+            patch.object(hud.subprocess, "Popen", return_value=fake):
+        hud.open_window(app.on_window)
+        fake.print(event="ready", text="press option+space to speak")
+        fake.print(event="recorded", wav=str(wav))
+        assert wait_for(lambda: route.called and {"heard": "buy apples"} in fake.sent)
+        assert route.call_args.args[0] == "buy apples"
+        assert wait_for(lambda: any(m.get("module") == "example" and m.get("request") == "buy apples" for m in fake.sent))
+        assert wait_for(lambda: {"idle": True} in fake.sent)  # the task ended, the window may hide
+        assert not wav.exists()  # the temp recording is deleted
+        hud.close()
+        fake.lines.put(None)
+    app.close()
+
+
+def test_hotkey_cancel_sends_nothing(tmp_path):
+    route = Mock()
+    app, _, _ = app_for(tmp_path, route=route, transcribe=Mock())
+    with patch.object(hud, "heard") as heard:
+        app.on_window({"event": "cancelled"})
+    route.assert_not_called()
+    app.transcribe.assert_not_called()
+    heard.assert_not_called()
+    app.close()
+
+
+def test_hotkey_unclear_speech_shows_nothing_understood_and_routes_nothing(tmp_path):
+    wav = tmp_path / "request.wav"
+    wav.write_bytes(b"RIFF")
+    route = Mock()
+    app, _, _ = app_for(tmp_path, route=route, transcribe=Mock(side_effect=FileNotFoundError("no model")))
+    with patch.object(hud, "heard") as heard:
+        app.on_window({"event": "recorded", "wav": str(wav)})
+    heard.assert_called_once_with("")
+    route.assert_not_called()
+    assert not wav.exists()
+    app.close()
+
+
+def test_question_is_shown_in_the_window(tmp_path):
+    route = Mock(return_value=Route(kind="detail", question="Which items?"))
+    app, _, _ = app_for(tmp_path, route=route)
+    with patch.object(hud, "notice") as notice:
+        app.accept("buy groceries")
+    notice.assert_called_once_with("Which items?")
+    app.close()
