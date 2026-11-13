@@ -10,8 +10,13 @@ let WIDTH: CGFloat = 360
 let MARGIN: CGFloat = 16
 let PAD: CGFloat = 14
 let ICONS = ["done": "✓", "running": "●", "waiting": "○", "failed": "✗", "gate": "?"]
+// Explicit light colors: the HUD is always dark, and semantic colors such as
+// tertiaryLabelColor can resolve to the light-mode (near-black) value in the text view.
+let TITLE = NSColor.white
+let BODY = NSColor(white: 1.0, alpha: 0.85)
+let DIM = NSColor(white: 1.0, alpha: 0.65)
 let COLORS: [String: NSColor] = [
-    "done": .systemGreen, "running": .systemBlue, "waiting": .tertiaryLabelColor,
+    "done": .systemGreen, "running": .systemBlue, "waiting": DIM,
     "failed": .systemRed, "gate": .systemOrange,
 ]
 
@@ -99,9 +104,9 @@ final class HUD {
         }
         let module = s["module"] as? String ?? ""
         let request = s["request"] as? String ?? ""
-        line(module.isEmpty ? "Jarvis" : "Jarvis · \(module)", .boldSystemFont(ofSize: 13), .labelColor)
+        line(module.isEmpty ? "Jarvis" : "Jarvis · \(module)", .boldSystemFont(ofSize: 13), TITLE)
         if !request.isEmpty {
-            line(request.replacingOccurrences(of: "\n", with: " "), .systemFont(ofSize: 11), .secondaryLabelColor)
+            line(request.replacingOccurrences(of: "\n", with: " "), .systemFont(ofSize: 11), BODY)
         }
         let mono = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         let nodes = s["nodes"] as? [[String: Any]] ?? []
@@ -111,12 +116,12 @@ final class HUD {
             let note = n["note"] as? String ?? ""
             let id = n["id"] as? String ?? "?"
             line("\(ICONS[status] ?? "○") \(id)" + (note.isEmpty ? "" : "  \(note)"), mono,
-                 COLORS[status] ?? .labelColor)
+                 COLORS[status] ?? BODY)
         }
         let logs = s["log"] as? [String] ?? []
         if !logs.isEmpty { line("", .systemFont(ofSize: 4), .clear) }
         for entry in logs {
-            line(entry, NSFont.monospacedSystemFont(ofSize: 10, weight: .light), .tertiaryLabelColor)
+            line(entry, NSFont.monospacedSystemFont(ofSize: 10, weight: .regular), DIM)
         }
         if out.length > 0 { out.deleteCharacters(in: NSRange(location: out.length - 1, length: 1)) }
         return out
