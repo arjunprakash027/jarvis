@@ -18,3 +18,4 @@ secrets/
 build/
 dist/
 *.egg-info/
+bin/jarvis-hud

@@ -11,7 +11,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import engine, gate, router, voice
+from . import engine, gate, hud, router, voice
 from .log import event, log_path
 from .dag import check_dag
 from .harness import Harness
@@ -143,6 +143,7 @@ class Jarvis:
         with self.module_locks[module.name]:
             task_id = uuid.uuid4().hex
             submitted = False
+            hud.start(module.name, task_id, request)  # the fly-in window shows the DAG and log live
             try:
                 errors = ""
                 for attempt in range(3):
@@ -153,6 +154,7 @@ class Jarvis:
                         problems = [str(exc)]
                     event("plan", "check OK" if not problems else f"check failed: {problems[0][:80]}")
                     if not problems:
+                        hud.update_dag(dag["nodes"])
                         break
                     errors = "; ".join(problems)
                 else:
@@ -180,6 +182,7 @@ class Jarvis:
                 self.tell(f"{module.name}: {type(exc).__name__}: {exc}")
                 return {"status": "error", "reason": str(exc)}
             finally:
+                hud.stop()
                 # Valid executions compact in the engine's stored end step. A rejected
                 # plan never reaches that step, so compact its session here instead.
                 if not submitted:
